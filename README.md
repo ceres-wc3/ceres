@@ -111,7 +111,7 @@ At the moment, Ceres offers two additional macros, with more possibly coming in 
 
 This macro will inject the contents of the specified file into the source where it is called. Paths are relative to the project's root, e.g. `include("src/resource/somestuff")`
 
-# `compiletime()`
+## `compiletime()`
 
 This macro will evaluate the given Lua expression at compiletime, and emit any resulting values into the source, if there were any.
 If an argument is a function, then it is also executed.
