@@ -120,7 +120,7 @@ impl CeresContext {
 #[derive(Deserialize)]
 pub struct CeresConfig {
     pub run: CeresRunConfig,
-    pub reload: CeresReloadConfig,
+    pub reload: Option<CeresReloadConfig>,
 }
 
 #[derive(Deserialize)]
