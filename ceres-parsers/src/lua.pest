@@ -1,0 +1,190 @@
+
+WHITESPACE = _{ " " | "\t" | "\r" | "\n" }
+
+COMMENT = _{
+    CommentStart ~ LongBracketStart ~ StringContentLong ~ LongBracketEnd |
+    // CommentStart ~ PreprocessDirective |
+    CommentStart ~ SimpleCommentContent
+}
+
+keyword = _{
+    "and"   | "break" | "do"       | "else" | "elseif" | "end"    |
+    "false" | "for  " | "function" | "goto" | "if"     | "in"     |
+    "local" | "nil"   | "not"      | "or"   | "repeat" | "return" |
+    "then"  | "true"  | "until"    | "while"
+}
+
+CommentStart = _{ "--" }
+LongBracketContent = _{ "="* }
+LongBracketStart = _{ "[" ~ PUSH(LongBracketContent) ~ "[" }
+LongBracketEnd = _{ "]" ~ POP ~ "]" }
+LongBracketEndPeek = _{ "]" ~ PEEK ~ "]" }
+SimpleCommentContent = { (!("\n") ~ ANY)* }
+StringContentLong = { (!(LongBracketEndPeek) ~ ANY)* }
+
+Ident = @{ 
+    !(ASCII_DIGIT | WHITESPACE) ~ !(keyword ~ WHITESPACE) ~ (!(WHITESPACE) ~ (LETTER | "_" | ASCII_DIGIT))+
+}
+
+LiteralNumberDec = @{
+    ("-")? ~ ASCII_DIGIT+ ~ ((".") ~ ASCII_DIGIT*)? ~ (^"e" ~ ("-")? ~ ASCII_DIGIT+)?
+}
+
+LiteralNumberHex = @{
+    ("-")? ~ "0x" ~ ASCII_HEX_DIGIT+ ~ ((^"e" ~ ("-")? ~ ASCII_DIGIT+) | (^"p" ~ ("-")? ~ ASCII_HEX_DIGIT+))?
+}
+
+LiteralNumber = _{
+    LiteralNumberHex | LiteralNumberDec
+}
+
+LiteralString = ${
+    "'" ~ StringContentSQ ~ "'" |
+    "\"" ~ StringContentDQ ~ "\"" |
+    LongBracketStart ~ StringContentLong ~ LongBracketEnd
+}
+
+StringEscape = @{ "\\" ~ ("\"" | "\'") }
+
+StringContentSQ = @{ (!("\'" | "\\") ~ ANY)* ~ (StringEscape ~ StringContentSQ)? }
+StringContentDQ = @{ (!("\"" | "\\") ~ ANY)* ~ (StringEscape ~ StringContentDQ)? }
+
+
+LiteralNil = { "nil" }
+LiteralFalse = { "false" }
+LiteralTrue = { "true" }
+
+Chunk = {SOI ~ Block ~ EOI}
+Block = {Stmt* ~ StmtReturn?}
+
+StmtAssign = { VarList ~ "=" ~ ExpList }
+StmtFuncCall = { FunctionCall }
+StmtLabel = { "::" ~ Ident ~ "::" }
+StmtBreak = { "break" }
+StmtGoto = { "goto" ~ Ident }
+StmtDo = { "do" ~ Block ~ "end"}
+StmtWhile = { "while" ~ Exp ~ "do" ~ Block ~ "end" }
+StmtRepeat = { "repeat" ~ Block ~ "until" ~ Exp }
+StmtIf = { "if" ~ Exp ~ "then" ~ Block ~ ("elseif" ~ Exp ~ "then" ~ Block)? ~ ("else" ~ Block)? ~ "end" }
+StmtForIndex = { "for" ~ Ident ~ "=" ~ Exp ~ "," ~ Exp ~ ("," ~ Exp)? ~ "do" ~ Block ~ "end" }
+StmtForEach = { "for" ~ IdentList ~ "in" ~ ExpList ~ "do" ~ Block ~ "end" }
+StmtFuncDef = { "function" ~ FuncName ~ FuncBody }
+StmtLocalFuncDef = { "local" ~ "function" ~ Ident ~ FuncBody }
+StmtLocalDef = { "local" ~ IdentList ~ ("=" ~ ExpList)? }
+
+StmtReturn = { "return" ~ (ExpList)? ~ (";")? }
+
+Stmt = {
+    ";" |
+    StmtAssign |
+    StmtFuncCall |
+    StmtLabel |
+    StmtBreak |
+    StmtGoto |
+    StmtDo |
+    StmtWhile |
+    StmtRepeat |
+    StmtIf |
+    StmtForIndex |
+    StmtForEach |
+    StmtLocalDef |
+    StmtFuncDef |
+    StmtLocalFuncDef
+}
+
+FuncName = { Ident ~ ("." ~ Ident)* ~ (":" ~ Ident)? }
+VarList = { Var ~ ("," ~ Var)* }
+IdentList = { Ident ~ ("," ~ Ident)* }
+ExpList = { Exp ~ ("," ~ Exp)* }
+
+VarArg = { "..." }
+
+ExpAtom = _{
+    MacroCall |
+    LiteralNil |
+    LiteralTrue |
+    LiteralFalse |
+    LiteralNumber |
+    LiteralString |
+    VarArg |
+    AnonFuncDef |
+    Value |
+    TableConstructor |
+    UnaryOpExp 
+}
+
+UnaryOpExp = {
+    UnaryOp ~ ExpAtom
+}
+
+BinaryOpExp = {
+    ExpAtom ~ (BinaryOp ~ ExpAtom)+
+}
+
+Exp = { 
+    BinaryOpExp |
+    ExpAtom 
+}
+
+AtomicExp = {
+    Ident |
+    "(" ~ Exp ~ ")"
+}
+
+Index = {
+    "[" ~ Exp ~ "]" |
+    "." ~ Ident
+}
+
+SimpleCall = { Args }
+MethodCall = { ":" ~ Ident ~ Args }
+
+Call = _{
+    SimpleCall |
+    MethodCall
+}
+
+Var = {
+    AtomicExp ~ (
+        Call* ~ Index |
+        Index
+    )*
+}
+
+Value = {
+    Var ~ Call?
+}
+
+FunctionCall = {
+    MacroCall |
+    Var ~ Call
+}
+
+Macro = {
+    "include" | "compiletime" | "require"
+}
+
+MacroCall = {
+    Macro ~ SimpleCall
+}
+
+Args = { "(" ~ ExpList? ~ ")" | TableConstructor | LiteralString }
+
+AnonFuncDef = { "function" ~ FuncBody }
+
+FuncBody = { "(" ~ ParList? ~ ")" ~ Block ~ "end" }
+
+ParList = { IdentList ~ ("," ~ "...")? | "..." }
+
+TableConstructor = { "{" ~ (FieldList)* ~ "}" }
+
+FieldList = { Field ~ (FieldSep ~ Field)* ~ FieldSep? }
+
+Field = { "[" ~ Exp ~ "]" ~ "=" ~ Exp | Ident ~ "=" ~ Exp | Exp}
+
+FieldSep = { "," | ";" }
+UnaryOp = { "-" | "not" | "#" | "~" }
+BinaryOp = { "+" | "-" | "*" | "/" | "//" | "^" | "%" |
+          "&" | "~" | "|" | ">>" | "<<" | ".." |
+          "<" | "<=" | ">" | ">=" | "==" | "~=" |
+          "and" | "or" }

@@ -1,0 +1,9 @@
+[package]
+name = "ceres-parsers"
+version = "0.1.0"
+authors = ["mori"]
+edition = "2018"
+
+[dependencies]
+pest = "2.1"
+pest_derive = "2.1"

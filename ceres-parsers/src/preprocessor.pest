@@ -1,0 +1,26 @@
+CommentStart = _{ "--" }
+
+CodeBlock = @{
+    (!(CommentStart) ~ ANY)+
+}
+
+LongBracketContent = _{ "="* }
+
+LongBracketStart = _{ "[" ~ PUSH(LongBracketContent) ~ "[" }
+LongBracketEnd = _{ "]" ~ POP ~ "]" }
+LongBracketEndPeek = _{ "]" ~ PEEK ~ "]" }
+
+ComplexCommentContent = { (!(LongBracketEndPeek) ~ ANY)* }
+SimpleCommentContent = { (!("\n") ~ ANY)* }
+
+PreprocessDirective = { "#" ~ ((!("\n") ~ ANY )*)}
+
+Comment = ${
+    CommentStart ~ LongBracketStart ~ ComplexCommentContent ~ LongBracketEnd |
+    CommentStart ~ PreprocessDirective |
+    CommentStart ~ SimpleCommentContent
+}
+
+File = {
+    SOI ~ (CodeBlock | Comment)* ~ EOI
+}
