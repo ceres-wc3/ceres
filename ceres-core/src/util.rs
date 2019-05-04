@@ -1,10 +1,5 @@
-use matches::matches;
 use pest::iterators::*;
-use pest::Parser;
 use pest::RuleType;
-use rlua::Lua;
-
-use ceres_parsers::lua;
 
 pub fn find_pairs_with_rule<'i, R: RuleType>(
     pair: &Pair<'i, R>,

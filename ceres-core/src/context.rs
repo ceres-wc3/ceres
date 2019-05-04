@@ -1,11 +1,7 @@
 use std::fs;
-use std::path::{PathBuf, Path};
-use std::collections::HashMap;
+use std::path::PathBuf;
 
-use dirs;
-use failure::{err_msg, format_err, Error, Fail, ResultExt};
-use log::info;
-use log::warn;
+use failure::Fail;
 use serde::Deserialize;
 
 #[derive(Fail, Debug)]
@@ -27,7 +23,8 @@ pub struct CeresContext {
 
 impl CeresContext {
     pub fn new<P: Into<PathBuf>>(root_dir: P) -> Result<CeresContext, CeresContextError> {
-        let config = CeresConfig::initialize().map_err(|err| CeresContextError::CouldNotReadConfig(err))?;
+        let config =
+            CeresConfig::initialize().map_err(CeresContextError::CouldNotReadConfig)?;
 
         Ok(CeresContext {
             config,

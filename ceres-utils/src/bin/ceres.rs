@@ -1,6 +1,6 @@
 use clap::clap_app;
 use fern::colors::{Color, ColoredLevelConfig};
-use log::{error, info, warn};
+use log::error;
 
 use failure::{Error, ResultExt};
 

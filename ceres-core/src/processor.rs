@@ -1,11 +1,11 @@
-use std::collections::{HashMap, HashSet};
+use std::collections::{HashMap};
 use std::fmt::Write;
 use std::fs;
-use std::path::{Path, PathBuf};
+use std::path::{Path};
 
 use failure::{err_msg, format_err, Error, Fail, ResultExt};
 use matches::matches;
-use pest::iterators::{Pair, Pairs};
+use pest::iterators::{Pair};
 use pest::Parser;
 use rlua::Lua;
 
@@ -146,12 +146,12 @@ impl<'a> CodeProcessor<'a> {
         let exp = macro_args.into_inner().next().unwrap();
         let string_literal = util::find_pairs_with_rule(&exp, lua::Rule::LiteralString)
             .next()
-            .ok_or(err_msg("require macro must take a string literal"))?;
+            .ok_or_else(|| err_msg("require macro must take a string literal"))?;
 
         let string_content = string_literal
             .into_inner()
             .next()
-            .ok_or(err_msg("require macro must have content"))?
+            .ok_or_else(|| err_msg("require macro must have content"))?
             .as_str();
 
         let full_require_path = self
@@ -173,12 +173,12 @@ impl<'a> CodeProcessor<'a> {
         let exp = macro_args.into_inner().next().unwrap();
         let string_literal = util::find_pairs_with_rule(&exp, lua::Rule::LiteralString)
             .next()
-            .ok_or(err_msg("include macro must take a string literal"))?;
+            .ok_or_else(|| err_msg("include macro must take a string literal"))?;
 
         let string_content = string_literal
             .into_inner()
             .next()
-            .ok_or(err_msg("include macro must have content"))?
+            .ok_or_else(|| err_msg("include macro must have content"))?
             .as_str();
 
         let full_include_path = self.context.file_path(string_content);

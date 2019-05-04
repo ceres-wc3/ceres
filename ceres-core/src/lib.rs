@@ -1,19 +1,16 @@
 extern crate fs_extra as fsx;
 
 pub mod context;
-mod error;
 mod processor;
 mod util;
 
-use failure::{err_msg, Context, Error, Fail, ResultExt};
+use failure::{Error, ResultExt};
 use log::info;
 use rlua::prelude::*;
-use std::collections::HashSet;
 use std::fmt::Write;
 use std::fs;
 use std::fs::File;
-use std::path::PathBuf;
-use std::process::{Command, Stdio};
+use std::process::Command;
 
 
 use crate::processor::CodeProcessor;
@@ -35,7 +32,6 @@ use crate::processor::CodeProcessor;
 pub struct Ceres {
     lua: Lua,
     context: context::CeresContext,
-    root_dir: PathBuf,
 }
 
 impl Ceres {
@@ -49,11 +45,7 @@ impl Ceres {
 
         let context = context::CeresContext::new(&root_dir)?;
 
-        Ok(Ceres {
-            lua,
-            root_dir,
-            context,
-        })
+        Ok(Ceres { lua, context })
     }
 
     /// Builds and runs the specified map in WC3, using the user's Ceres config to determine
@@ -155,13 +147,12 @@ impl Ceres {
 
         info!("building map script for {}", map_name);
 
-        let map_script = fs::read_to_string(
-            self.context.map_file_path(map_name, "war3map.lua")?
-        ).context("Could not read map's war3map.lua")?;
+        let map_script = fs::read_to_string(self.context.map_file_path(map_name, "war3map.lua")?)
+            .context("Could not read map's war3map.lua")?;
         let mut main_script: String = String::new();
 
-        write!(main_script, "{}\n", HEADER).unwrap();
-        write!(main_script, "{}\n", map_script).unwrap();
+        writeln!(main_script, "{}", HEADER).unwrap();
+        writeln!(main_script, "{}", map_script).unwrap();
 
         let mut preprocessor = CodeProcessor::new(&mut self.lua, &self.context);
         preprocessor.add_file("main", self.context.src_file_path("main.lua")?)?;
