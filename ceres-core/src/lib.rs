@@ -167,21 +167,19 @@ impl Ceres {
         let mut preprocessor = CodeProcessor::new(&mut self.lua, &self.context);
         preprocessor.add_file("main", self.context.src_file_path("main.lua")?)?;
 
-        for (module_name, module_source) in preprocessor.code_units() {
-            let module_name_underscored = module_name.replace(".", "_");
-
+        for (module_number, (module_name, module_source)) in preprocessor.code_units().enumerate() {
             writeln!(
                 main_script,
-                "local function __{}_init()\n    {}\nend",
-                module_name_underscored,
+                "local function __module_{}()\n    {}\nend",
+                module_number,
                 module_source.source().replace("\n", "\n    ")
             )
             .unwrap();
 
             writeln!(
                 main_script,
-                r#"__modules["{}"] = {{initialized = false, cached = nil, loader = __{}_init}}"#,
-                module_name, module_name_underscored
+                r#"__modules["{}"] = {{initialized = false, cached = nil, loader = __module_{}}}"#,
+                module_name, module_number
             )
             .unwrap();
         }
