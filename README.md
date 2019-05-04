@@ -31,7 +31,10 @@ In order to specify various configuration values, Ceres looks for a `ceres.toml`
 For usage on Windows, you only need the following:
 ```toml
 [run]
-wc3_start_command = "<PATH TO WC3 EXECUTABLE>"
+# if you're using backslashes, double them
+wc3_start_command = "C:\\path\\to\\war3.exe"
+# or just use forward slashes, both variants work
+wc3_start_command = "C:/path/to/war3.exe"
 ```
 
 You can also specify which window mode to use:
