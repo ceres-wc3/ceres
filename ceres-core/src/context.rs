@@ -110,7 +110,7 @@ impl CeresContext {
         }
 
         if !path.is_dir() {
-            fs::create_dir(&path).unwrap();
+            fs::create_dir_all(&path).unwrap();
         }
 
         path
