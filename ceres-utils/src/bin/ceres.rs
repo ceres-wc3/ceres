@@ -23,7 +23,7 @@ fn main() -> Result<(), Box<std::error::Error>> {
         .apply()?;
 
     let matches = clap_app!(Ceres =>
-        (version: "0.1.0")
+        (version: "0.1.1")
         (author: "mori <mori@reu.moe>")
         (about: "Ceres is a build tool, script compiler and map preprocessor for WC3 Lua maps.")
         (@subcommand build =>

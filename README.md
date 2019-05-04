@@ -58,6 +58,8 @@ In this example, `start-wc3` is a custom script that launches Warcraft III in it
 
 # Usage
 
+You can download the latest version in the Releases tab above.
+
 Currently, Ceres only supports command-line usage. Make sure that the `ceres` executable is either in your `PATH`, or otherwise easily accessible.
 
 To build a map, `cd` into the project directory, and run:
