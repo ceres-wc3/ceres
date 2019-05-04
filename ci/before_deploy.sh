@@ -1,3 +1,4 @@
+#!/bin/bash
 # This script takes care of building your crate and packaging it for release
 
 set -ex
@@ -20,9 +21,11 @@ main() {
     # TODO Update this to build the artifacts that matter to you
     cross rustc --manifest-path ceres-utils/Cargo.toml --bin ceres --release --target $TARGET -- -C lto
 
-    if [[ $TARGET ~= .*windows.* ]]; then
+    if [ -e "target/$TARGET/release/ceres.exe" ]; then
         cp target/$TARGET/release/ceres.exe $stage/
-    else
+    fi
+
+    if [ -e "target/$TARGET/release/ceres" ]; then
         cp target/$TARGET/release/ceres $stage/
     fi
 
