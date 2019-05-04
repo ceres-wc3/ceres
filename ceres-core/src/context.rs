@@ -5,18 +5,13 @@ use std::collections::HashMap;
 use dirs;
 use failure::{err_msg, format_err, Error, Fail, ResultExt};
 use log::info;
+use log::warn;
 use serde::Deserialize;
 
 #[derive(Fail, Debug)]
 pub enum CeresContextError {
-    #[fail(display = "No config could be loaded.")]
-    NoConfigLoaded,
-    #[fail(display = "User's home directory was not found")]
-    HomeFolderNotFound,
-    #[fail(display = "Could not find Ceres config ({:?})", _0)]
-    ConfigReadError(PathBuf, #[fail(cause)] std::io::Error),
-    #[fail(display = "Ceres config is malformed ({:?})", _0)]
-    ConfigMalformed(PathBuf, #[fail(cause)] toml::de::Error),
+    #[fail(display = "Could not initialize Ceres config.")]
+    CouldNotReadConfig(#[fail(cause)] ConfigError),
     #[fail(display = "Source file not found ({:?})", _0)]
     SourceFileNotFound(String),
     #[fail(display = "Map ({:?}) not found", _0)]
@@ -32,7 +27,7 @@ pub struct CeresContext {
 
 impl CeresContext {
     pub fn new<P: Into<PathBuf>>(root_dir: P) -> Result<CeresContext, CeresContextError> {
-        let config = CeresConfig::initialize()?;
+        let config = CeresConfig::initialize().map_err(|err| CeresContextError::CouldNotReadConfig(err))?;
 
         Ok(CeresContext {
             config,
@@ -117,6 +112,18 @@ impl CeresContext {
     }
 }
 
+#[derive(Fail, Debug)]
+pub enum ConfigError {
+    #[fail(display = "User's home directory was not found")]
+    HomeFolderNotFound,
+    #[fail(display = "No config could be loaded.")]
+    NoConfigLoaded,
+    #[fail(display = "Could not find config ({:?})", _0)]
+    ConfigReadError(PathBuf, #[fail(cause)] std::io::Error),
+    #[fail(display = "Config is malformed ({:?})", _0)]
+    ConfigMalformed(PathBuf, #[fail(cause)] toml::de::Error),
+}
+
 #[derive(Deserialize)]
 pub struct CeresConfig {
     pub run: CeresRunConfig,
@@ -137,66 +144,18 @@ pub struct CeresReloadConfig {
 }
 
 impl CeresConfig {
-    fn initialize() -> Result<CeresConfig, CeresContextError> {
-        let user_config = Self::load_user_config();
-        let map_config = Self::load_map_config();
-
-        match (user_config, map_config) {
-            (Err(_), Err(_)) => {
-                Err(CeresContextError::NoConfigLoaded)
-            }
-
-            (Ok(val), Err(_)) => {
-                Ok(val.try_into().map_err(|_| CeresContextError::NoConfigLoaded)?)
-            }
-
-            (Err(_), Ok(val)) => {
-                Ok(val.try_into().map_err(|_| CeresContextError::NoConfigLoaded)?)
-            }
-
-            (Ok(user), Ok(map)) => {
-                // let user = user.try_into().map_err(|err| CeresContextError::NoConfigLoaded)?;
-                // let map = map.try_into().map_err(|err| CeresContextError::NoConfigLoaded)?;
-
-                let mut result = toml::map::Map::default();
-
-                for (key, val) in user.as_table().unwrap().iter() {
-                    result.insert(key.to_string(), val.clone());
-                }
-
-                for (key, val) in map.as_table().unwrap().iter() {
-                    result.insert(key.to_string(), val.clone());
-                }
-
-                Ok(toml::Value::Table(result).try_into().map_err(|_| CeresContextError::NoConfigLoaded)?)
-            }
-
-            _ => unimplemented!()
-        }
+    fn initialize() -> Result<CeresConfig, ConfigError> {
+        Self::load_map_config()
     }
 
-    fn load_user_config() -> Result<toml::Value, CeresContextError> {
-        let user_config_dir =
-            dirs::home_dir().ok_or_else(|| CeresContextError::HomeFolderNotFound)?;
-        let ceres_config_path = user_config_dir.join(".ceres").join("config.toml");
-
-        let ceres_config_content = fs::read(&ceres_config_path)
-            .map_err(|err| CeresContextError::ConfigReadError(ceres_config_path.clone(), err))?;
-
-        let ceres_config = toml::from_slice(&ceres_config_content)
-            .map_err(|err| CeresContextError::ConfigMalformed(ceres_config_path, err))?;
-
-        Ok(ceres_config)
-    }
-
-    fn load_map_config() -> Result<toml::Value, CeresContextError> {
+    fn load_map_config() -> Result<CeresConfig, ConfigError> {
         let ceres_config_path = std::env::current_dir().unwrap().join("ceres.toml");
 
         let ceres_config_content = fs::read(&ceres_config_path)
-            .map_err(|err| CeresContextError::ConfigReadError(ceres_config_path.clone(), err))?;
+            .map_err(|err| ConfigError::ConfigReadError(ceres_config_path.clone(), err))?;
 
         let ceres_config = toml::from_slice(&ceres_config_content)
-            .map_err(|err| CeresContextError::ConfigMalformed(ceres_config_path, err))?;
+            .map_err(|err| ConfigError::ConfigMalformed(ceres_config_path, err))?;
 
         Ok(ceres_config)
     }

@@ -47,8 +47,7 @@ impl Ceres {
         let lua = Lua::new();
         let root_dir = std::env::current_dir()?;
 
-        let context = context::CeresContext::new(&root_dir)
-            .context("Could not initialize the Ceres context.")?;
+        let context = context::CeresContext::new(&root_dir)?;
 
         Ok(Ceres {
             lua,

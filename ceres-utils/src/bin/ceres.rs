@@ -40,8 +40,8 @@ fn main() -> Result<(), Box<std::error::Error>> {
     if let Err(error) = run(matches) {
         error!("{}", error);
 
-        for cause in error.iter_causes() {
-            error!("Caused by: {}", cause);
+        for (i, cause) in error.iter_causes().enumerate() {
+            error!("{}Cause: {}", "    ".repeat(i + 1), cause);
         }
     }
 
