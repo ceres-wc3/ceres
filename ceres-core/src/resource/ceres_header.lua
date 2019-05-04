@@ -51,8 +51,8 @@ function ceres.setConfig(callback)
     __ceres_customConfig = callback
 end
 
-function ceres.catch(callback)
-    local success, err = pcall(callback)
+function ceres.catch(callback, ...)
+    local success, err = pcall(callback, ...)
 
     if not success then
         print(err)
@@ -60,15 +60,14 @@ function ceres.catch(callback)
 end
 
 function ceres.wrapCatch(callback)
-    return function()
-        ceres.catch(callback)
+    return function(...)
+        ceres.catch(callback, ...)
     end
 end
 
 local __modules = {}
 
-function require(name)
-    print("requiring " .. name)
+require = function(name)
     local module = __modules[name]
 
     if module ~= nil then

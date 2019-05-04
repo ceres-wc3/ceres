@@ -11,6 +11,6 @@ function config()
     __ceresConfig()
 end
 
-require("main")
+ceres.catch(require("main"))
 
 -- ceres post-script end
