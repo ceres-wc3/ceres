@@ -20,8 +20,11 @@ main() {
     # TODO Update this to build the artifacts that matter to you
     cross rustc --manifest-path ceres-utils/Cargo.toml --bin ceres --release --target $TARGET -- -C lto
 
-    # TODO Update this to package the right artifacts
-    cp target/$TARGET/release/ceres $stage/
+    if [[ $TARGET ~= .*windows.* ]]; then
+        cp target/$TARGET/release/ceres.exe $stage/
+    else
+        cp target/$TARGET/release/ceres $stage/
+    fi
 
     cd $stage
     tar czf $src/$CRATE_NAME-$TRAVIS_TAG-$TARGET.tar.gz *
