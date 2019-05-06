@@ -65,7 +65,7 @@ StmtGoto = { "goto" ~ Ident }
 StmtDo = { "do" ~ Block ~ "end"}
 StmtWhile = { "while" ~ Exp ~ "do" ~ Block ~ "end" }
 StmtRepeat = { "repeat" ~ Block ~ "until" ~ Exp }
-StmtIf = { "if" ~ Exp ~ "then" ~ Block ~ ("elseif" ~ Exp ~ "then" ~ Block)? ~ ("else" ~ Block)? ~ "end" }
+StmtIf = { "if" ~ Exp ~ "then" ~ Block ~ ("elseif" ~ Exp ~ "then" ~ Block)* ~ ("else" ~ Block)? ~ "end" }
 StmtForIndex = { "for" ~ Ident ~ "=" ~ Exp ~ "," ~ Exp ~ ("," ~ Exp)? ~ "do" ~ Block ~ "end" }
 StmtForEach = { "for" ~ IdentList ~ "in" ~ ExpList ~ "do" ~ Block ~ "end" }
 StmtFuncDef = { "function" ~ FuncName ~ FuncBody }
