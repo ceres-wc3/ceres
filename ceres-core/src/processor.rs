@@ -1,4 +1,4 @@
-use std::collections::{HashMap};
+use indexmap::IndexMap;
 use std::fmt::Write;
 use std::fs;
 use std::path::{Path};
@@ -35,7 +35,7 @@ impl CodeUnit {
 pub struct CodeProcessor<'a> {
     lua: &'a mut Lua,
     context: &'a CeresContext,
-    code_units: HashMap<String, CodeUnit>,
+    code_units: IndexMap<String, CodeUnit>,
 }
 
 impl<'a> CodeProcessor<'a> {

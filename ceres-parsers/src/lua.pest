@@ -23,16 +23,20 @@ SimpleCommentContent = { (!("\n") ~ ANY)* }
 StringContentLong = { (!(LongBracketEndPeek) ~ ANY)* }
 
 Ident = @{ 
-    !(ASCII_DIGIT | WHITESPACE) ~ !(keyword ~ WHITESPACE) ~ (!(WHITESPACE) ~ (LETTER | "_" | ASCII_DIGIT))+
+    !(ASCII_DIGIT | WHITESPACE) ~ !(keyword ~ (!ASCII_ALPHA ~ ANY)) ~ (!(WHITESPACE) ~ (ASCII_ALPHA | "_" | ASCII_DIGIT))+
 }
 
-LiteralNumberDec = @{
-    ("-")? ~ ASCII_DIGIT+ ~ ((".") ~ ASCII_DIGIT*)? ~ (^"e" ~ ("-")? ~ ASCII_DIGIT+)?
-}
+DecimalExponent = @{ (^"e" ~ ("-" | "+")? ~ ASCII_DIGIT+) }
+BinaryExponent = @{ (^"p" ~ ("-" | "+")? ~ ASCII_HEX_DIGIT+) }
 
-LiteralNumberHex = @{
-    ("-")? ~ "0x" ~ ASCII_HEX_DIGIT+ ~ ((^"e" ~ ("-")? ~ ASCII_DIGIT+) | (^"p" ~ ("-")? ~ ASCII_HEX_DIGIT+))?
-}
+NumberNormal = {ASCII_DIGIT+ ~ ("." ~ ASCII_DIGIT*)?}
+NumberFractionalOnly = {"." ~ ASCII_DIGIT+}
+
+HexNormal = {ASCII_HEX_DIGIT+ ~ ("." ~ ASCII_HEX_DIGIT*)?}
+HexFractionalOnly = {"." ~ ASCII_HEX_DIGIT+}
+
+LiteralNumberDec = @{ ("-")? ~ (NumberNormal | NumberFractionalOnly) ~ DecimalExponent? }
+LiteralNumberHex = @{ ("-")? ~ "0" ~ ^"x" ~ (HexNormal | HexFractionalOnly) ~ (DecimalExponent | BinaryExponent)? }
 
 LiteralNumber = _{
     LiteralNumberHex | LiteralNumberDec
@@ -44,11 +48,10 @@ LiteralString = ${
     LongBracketStart ~ StringContentLong ~ LongBracketEnd
 }
 
-StringEscape = @{ "\\" ~ ("\"" | "\'") }
+StringEscape = @{ "\\" ~ ANY }
 
 StringContentSQ = @{ (!("\'" | "\\") ~ ANY)* ~ (StringEscape ~ StringContentSQ)? }
 StringContentDQ = @{ (!("\"" | "\\") ~ ANY)* ~ (StringEscape ~ StringContentDQ)? }
-
 
 LiteralNil = { "nil" }
 LiteralFalse = { "false" }
@@ -152,12 +155,12 @@ Var = {
 }
 
 Value = {
-    Var ~ Call?
+    Var ~ Call*
 }
 
 FunctionCall = {
     MacroCall |
-    Var ~ Call
+    Var ~ Call+
 }
 
 Macro = {
