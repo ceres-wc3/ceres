@@ -6,24 +6,8 @@ pub use pest::Parser;
 #[grammar = "lua.pest"]
 pub struct LuaParser;
 
-use pest::iterators::*;
-use pest::RuleType;
-
-fn pair_to_string<T: RuleType>(pairs: Pairs<T>, indent: usize) {
-    for pair in pairs {
-        println!(
-            "{} >{:?}: {}",
-            "  ".repeat(indent),
-            pair.as_rule(),
-            pair.as_str().replace("\n", "\\n")
-        );
-        pair_to_string(pair.into_inner(), indent + 1);
-    }
-}
-
 #[cfg(test)]
 mod test {
-    use super::pair_to_string;
     use super::LuaParser;
     use super::Rule;
     use pest::Parser;
