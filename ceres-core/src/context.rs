@@ -16,6 +16,14 @@ pub enum CeresContextError {
     MapFileNotFound(String, String),
 }
 
+pub struct CeresPaths {
+    root: PathBuf,
+    src: PathBuf,
+    lib: PathBuf,
+    target: PathBuf,
+    maps: PathBuf
+}
+
 pub struct CeresContext {
     config: CeresConfig,
     root_dir: PathBuf,

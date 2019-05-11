@@ -1,11 +1,11 @@
 use indexmap::IndexMap;
 use std::fmt::Write;
 use std::fs;
-use std::path::{Path};
+use std::path::{Path, PathBuf};
 
 use failure::{err_msg, format_err, Error, Fail, ResultExt};
 use matches::matches;
-use pest::iterators::{Pair};
+use pest::iterators::Pair;
 use pest::Parser;
 use rlua::Lua;
 
@@ -15,11 +15,33 @@ use crate::context::CeresContext;
 use crate::util;
 
 #[derive(Debug, Fail)]
-pub enum PreprocessorError {
-    #[fail(display = "Parsing error in {}", _1)]
-    ParseError(#[fail(cause)] pest::error::Error<lua::Rule>, String),
-    // #[fail(display = "Macro syntax error in {}, {}", _0, _1)]
-    // GenericError(String)
+pub enum CompilerError {
+    #[fail(display = "Parsing error in {:?}", path)]
+    ParseError {
+        #[fail(cause)]
+        cause: pest::error::Error<lua::Rule>,
+        path: PathBuf,
+    },
+    #[fail(display = "Cannot access file {:?}", path)]
+    IOError {
+        #[fail(cause)]
+        cause: std::io::Error,
+        path: PathBuf,
+    },
+    #[fail(display = "Code error in {:?}", path)]
+    CodeError {
+        #[fail(cause)]
+        cause: CodeError,
+        path: PathBuf,
+    },
+}
+
+#[derive(Debug, Fail)]
+#[fail(display = "{}", diagnostic)]
+pub struct CodeError {
+    diagnostic: pest::error::Error<lua::Rule>,
+    #[fail(cause)]
+    cause: Error,
 }
 
 pub struct CodeUnit {
@@ -32,40 +54,53 @@ impl CodeUnit {
     }
 }
 
-pub struct CodeProcessor<'a> {
-    lua: &'a mut Lua,
-    context: &'a CeresContext,
+pub struct CodeCompiler<'a> {
+    lua: &'a Lua,
     code_units: IndexMap<String, CodeUnit>,
+    src_dirs: &'a [PathBuf],
+    root_dir: &'a PathBuf,
 }
 
-impl<'a> CodeProcessor<'a> {
-    pub fn new(lua: &'a mut Lua, context: &'a CeresContext) -> CodeProcessor<'a> {
-        CodeProcessor {
+impl<'a> CodeCompiler<'a> {
+    pub fn new(lua: &'a Lua, src_dirs: &'a [PathBuf], root_dir: &'a PathBuf) -> CodeCompiler<'a> {
+        CodeCompiler {
             lua,
-            context,
             code_units: Default::default(),
+            src_dirs,
+            root_dir,
         }
+    }
+
+    fn find_src_file<S>(&self, name: S) -> Option<PathBuf>
+    where
+        S: AsRef<Path>,
+    {
+        for folder in self.src_dirs {
+            let file_path = folder.join(name.as_ref());
+
+            if file_path.is_file() {
+                return Some(file_path);
+            }
+        }
+
+        None
     }
 
     pub fn code_units(&self) -> impl Iterator<Item = (&String, &CodeUnit)> {
         self.code_units.iter()
     }
 
-    pub fn add_file<P: AsRef<Path>>(
-        &mut self,
-        module_name: &str,
-        file_path: P,
-    ) -> Result<(), Error> {
+    pub fn add_file<S>(&mut self, module_name: &str, file_path: S) -> Result<(), Error>
+    where
+        S: AsRef<Path>,
+    {
         if !self.code_units.contains_key(module_name) {
-            let path_string = file_path.as_ref().to_str().unwrap().to_string();
-
-            let source = fs::read_to_string(&file_path).with_context(|e| {
-                format!(
-                    "Preprocessor: could not add file {}, reason: {}",
-                    path_string, e
-                )
+            let source = fs::read_to_string(&file_path).map_err(|err| CompilerError::IOError {
+                cause: err,
+                path: file_path.as_ref().to_path_buf(),
             })?;
-            let source = self.preprocess_file(&source, file_path)?;
+
+            let source = self.compile_file(&source, file_path)?;
 
             let code_unit = CodeUnit { source };
 
@@ -75,21 +110,24 @@ impl<'a> CodeProcessor<'a> {
         Ok(())
     }
 
-    fn preprocess_file<P: AsRef<Path>>(
-        &mut self,
-        input: &str,
-        file_path: P,
-    ) -> Result<String, Error> {
+    fn compile_file<S>(&mut self, input: &str, file_path: S) -> Result<String, CompilerError>
+    where
+        S: AsRef<Path>,
+    {
         let parsed = lua::LuaParser::parse(lua::Rule::Chunk, input).map_err(|err| {
-            PreprocessorError::ParseError(err, file_path.as_ref().to_str().unwrap().to_string())
+            CompilerError::ParseError {
+                cause: err,
+                path: file_path.as_ref().to_path_buf(),
+            }
         })?;
+
         let mut out_string = String::new();
         let mut emitted_index = 0;
 
         parsed
             .flatten()
             .filter(|pair| matches!(pair.as_rule(), lua::Rule::MacroCall))
-            .try_for_each(|pair| {
+            .try_for_each::<_, Result<(), CompilerError>>(|pair| {
                 let span_start = pair.as_span().start();
                 let span_end = pair.as_span().end();
 
@@ -109,9 +147,20 @@ impl<'a> CodeProcessor<'a> {
 
                 if macro_args.is_some() {
                     self.process_macro(macro_name, macro_args.unwrap(), &mut out_string)
-                } else {
-                    Ok(())
+                        .map_err(|cause| {
+                            let pest_error = pest::error::ErrorVariant::CustomError::<lua::Rule> {
+                                message: cause.to_string(),
+                            };
+                            let diagnostic =
+                                pest::error::Error::new_from_span(pest_error, pair.as_span());
+                            CompilerError::CodeError {
+                                cause: CodeError { diagnostic, cause },
+                                path: file_path.as_ref().to_path_buf(),
+                            }
+                        })?;
                 }
+
+                Ok(())
             })?;
 
         // if we have anything left-over, emit it
@@ -155,8 +204,8 @@ impl<'a> CodeProcessor<'a> {
             .as_str();
 
         let full_require_path = self
-            .context
-            .src_file_path(format!("{}.lua", string_content.replace(".", "/")))?;
+            .find_src_file(format!("{}.lua", string_content.replace(".", "/")))
+            .ok_or_else(|| format_err!("cannot find module {}", string_content))?;
 
         self.add_file(string_content, full_require_path)?;
 
@@ -181,16 +230,13 @@ impl<'a> CodeProcessor<'a> {
             .ok_or_else(|| err_msg("include macro must have content"))?
             .as_str();
 
-        let full_include_path = self.context.file_path(string_content);
+        let full_include_path = self.root_dir.join(string_content);
 
-        if !full_include_path.is_file() {
-            return Err(format_err!(
-                "{} is not a valid file",
-                full_include_path.display()
-            ));
-        }
-
-        let include_content = fs::read_to_string(full_include_path)?;
+        let include_content =
+            fs::read_to_string(&full_include_path).map_err(|err| CompilerError::IOError {
+                cause: err,
+                path: full_include_path.to_path_buf(),
+            })?;
 
         write!(out_string, "{}", include_content).unwrap();
 

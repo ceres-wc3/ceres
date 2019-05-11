@@ -1,49 +1,41 @@
 use clap::clap_app;
-use fern::colors::{Color, ColoredLevelConfig};
 use log::error;
 
 use failure::{Error, ResultExt};
 
 
 fn main() -> Result<(), Box<std::error::Error>> {
-    let colors = ColoredLevelConfig::new()
-        .info(Color::Green)
-        .warn(Color::Yellow)
-        .error(Color::Red);
-
-    fern::Dispatch::new()
-        .format(move |out, message, record| {
-            out.finish(format_args!(
-                "[{}] -> {}",
-                colors.color(record.level()),
-                message
-            ))
-        })
-        .chain(std::io::stdout())
-        .apply()?;
-
     let matches = clap_app!(Ceres =>
         (version: "0.1.2")
         (author: "mori <mori@reu.moe>")
         (about: "Ceres is a build tool, script compiler and map preprocessor for WC3 Lua maps.")
         (@subcommand build =>
-            (about: "Builds the specified map")
-            (@arg MAPDIR: +required "Specifies the mapdir to use for the build.")
+            (about: "Uses the build.lua file in the current directory to build a map.")
+            (setting: clap::AppSettings::TrailingVarArg)
+            (@arg BUILD_ARGS: ... "Arguments to pass to the build script.")
         )
         (@subcommand run =>
-            (about: "Builds and runs the specified map")
-            (@arg MAPDIR: +required "Specifies the mapdir to use for the run-build.")
+            (about: "Uses the build.lua file in the current directory to build a map, and then runs it.")
+            (setting: clap::AppSettings::TrailingVarArg)
+            (@arg BUILD_ARGS: ... "Arguments to pass to the build script.")
         )
         (@subcommand parse => (@arg FILE: +required "Debug."))
+        (@subcommand newbuild => 
+            (about: "Uses a build.lua file to build a map.")
+            (setting: clap::AppSettings::TrailingVarArg)
+            (@arg dir: --dir -d +takes_value "Sets the project directory.")
+            (@arg BUILD_ARGS: ... "Arguments to pass to the build script.")
+        )
     )
     .get_matches();
 
     std::process::exit(match run(matches) {
         Err(error) => {
-            error!("{}", error);
+            println!("[ERROR] An error has occured. Error chain:");
+            println!("{}", error);
 
-            for (i, cause) in error.iter_causes().enumerate() {
-                error!("{}Cause: {}", "    ".repeat(i + 1), cause);
+            for cause in error.iter_causes() {
+                println!("{}", cause);
             }
 
             1
@@ -54,15 +46,15 @@ fn main() -> Result<(), Box<std::error::Error>> {
 
 fn run(matches: clap::ArgMatches) -> Result<(), Error> {
     if let Some(arg) = matches.subcommand_matches("build") {
-        let mut ceres = ceres_core::Ceres::new()?;
-        ceres
-            .build_map(arg.value_of("MAPDIR").unwrap())
-            .context("Could not build map.")?;
+        // let mut ceres = ceres_core::Ceres::new()?;
+        // ceres
+        //     .build_map(arg.value_of("MAPDIR").unwrap())
+        //     .context("Could not build map.")?;
     } else if let Some(arg) = matches.subcommand_matches("run") {
-        let mut ceres = ceres_core::Ceres::new()?;
-        ceres
-            .run_map(arg.value_of("MAPDIR").unwrap())
-            .context("Could not run map.")?;
+        // let mut ceres = ceres_core::Ceres::new()?;
+        // ceres
+        //     .run_map(arg.value_of("MAPDIR").unwrap())
+        //     .context("Could not run map.")?;
     } else if let Some(arg) = matches.subcommand_matches("parse") {
         // this is just some debugging ...
 
@@ -87,6 +79,13 @@ fn run(matches: clap::ArgMatches) -> Result<(), Error> {
         }
 
         prnt(a, 0);
+    } else if let Some(arg) = matches.subcommand_matches("newbuild") {
+        let script_args = arg
+            .values_of("BUILD_ARGS")
+            .map(std::iter::Iterator::collect)
+            .unwrap_or_else(Vec::new);
+
+        ceres_core::run_build_script(None, script_args)?;
     }
 
     Ok(())
