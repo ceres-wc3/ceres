@@ -1,8 +1,8 @@
 [workspace]
 
 members = [
-#    "storm-sys",
-#    "ceres-mpq",
+    "storm-sys",
+    "ceres-mpq",
     "ceres-utils",
     "ceres-parsers",
     "ceres-core"

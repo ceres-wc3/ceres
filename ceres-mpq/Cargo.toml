@@ -1,0 +1,11 @@
+[package]
+name = "ceres-mpq"
+version = "0.1.0"
+authors = ["mori"]
+edition = "2018"
+
+[dependencies]
+num-derive = "0.2"
+num-traits = "0.2"
+storm-sys = {path = "../storm-sys"}
+failure = "0.1"
