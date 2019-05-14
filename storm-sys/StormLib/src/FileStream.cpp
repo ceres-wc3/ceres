@@ -19,7 +19,6 @@
 #include "FileStream.h"
 
 #ifdef _MSC_VER
-#pragma comment(lib, "wininet.lib")             // Internet functions for HTTP stream
 #pragma warning(disable: 4800)                  // 'BOOL' : forcing value to bool 'true' or 'false' (performance warning)
 #endif
 
@@ -607,110 +606,10 @@ static const TCHAR * BaseHttp_ExtractServerName(const TCHAR * szFileName, TCHAR 
 
 static bool BaseHttp_Open(TFileStream * pStream, const TCHAR * szFileName, DWORD dwStreamFlags)
 {
-#ifdef PLATFORM_WINDOWS
-
-    HINTERNET hRequest;
-    DWORD dwTemp = 0;
-
-    // Keep compiler happy
-    dwStreamFlags = dwStreamFlags;
-
-    // Don't connect to the internet
-    if(!InternetGetConnectedState(&dwTemp, 0))
-        return false;
-
-    // Initiate the connection to the internet
-    pStream->Base.Http.hInternet = InternetOpen(_T("StormLib HTTP MPQ reader"),
-                                                INTERNET_OPEN_TYPE_PRECONFIG,
-                                                NULL,
-                                                NULL,
-                                                0);
-    if(pStream->Base.Http.hInternet != NULL)
-    {
-        TCHAR szServerName[MAX_PATH];
-        DWORD dwFlags = INTERNET_FLAG_KEEP_CONNECTION | INTERNET_FLAG_NO_UI | INTERNET_FLAG_NO_CACHE_WRITE;
-
-        // Initiate connection with the server
-        szFileName = BaseHttp_ExtractServerName(szFileName, szServerName);
-        pStream->Base.Http.hConnect = InternetConnect(pStream->Base.Http.hInternet,
-                                                      szServerName,
-                                                      INTERNET_DEFAULT_HTTP_PORT,
-                                                      NULL,
-                                                      NULL,
-                                                      INTERNET_SERVICE_HTTP,
-                                                      dwFlags,
-                                                      0);
-        if(pStream->Base.Http.hConnect != NULL)
-        {
-            // Open HTTP request to the file
-            hRequest = HttpOpenRequest(pStream->Base.Http.hConnect, _T("GET"), szFileName, NULL, NULL, NULL, INTERNET_FLAG_NO_CACHE_WRITE, 0);
-            if(hRequest != NULL)
-            {
-                if(HttpSendRequest(hRequest, NULL, 0, NULL, 0))
-                {
-                    ULONGLONG FileTime = 0;
-                    DWORD dwFileSize = 0;
-                    DWORD dwDataSize;
-                    DWORD dwIndex = 0;
-                    TCHAR StatusCode[0x08];
-
-                    // Check if the file succeeded to open
-                    dwDataSize = sizeof(StatusCode);
-                    if(HttpQueryInfo(hRequest, HTTP_QUERY_STATUS_CODE, StatusCode, &dwDataSize, &dwIndex))
-                    {
-                        if(_tcscmp(StatusCode, _T("200")))
-                        {
-                            InternetCloseHandle(hRequest);
-                            SetLastError(ERROR_FILE_NOT_FOUND);
-                            return false;
-                        }
-                    }
-
-                    // Check if the MPQ has Last Modified field
-                    dwDataSize = sizeof(ULONGLONG);
-                    if(HttpQueryInfo(hRequest, HTTP_QUERY_LAST_MODIFIED | HTTP_QUERY_FLAG_SYSTEMTIME, &FileTime, &dwDataSize, &dwIndex))
-                        pStream->Base.Http.FileTime = FileTime;
-
-                    // Verify if the server supports random access
-                    dwDataSize = sizeof(DWORD);
-                    if(HttpQueryInfo(hRequest, HTTP_QUERY_CONTENT_LENGTH | HTTP_QUERY_FLAG_NUMBER, &dwFileSize, &dwDataSize, &dwIndex))
-                    {
-                        if(dwFileSize != 0)
-                        {
-                            InternetCloseHandle(hRequest);
-                            pStream->Base.Http.FileSize = dwFileSize;
-                            pStream->Base.Http.FilePos = 0;
-                            return true;
-                        }
-                    }
-                }
-
-                // Close the request
-                InternetCloseHandle(hRequest);
-            }
-
-            // Close the connection handle
-            InternetCloseHandle(pStream->Base.Http.hConnect);
-            pStream->Base.Http.hConnect = NULL;
-        }
-
-        // Close the internet handle
-        InternetCloseHandle(pStream->Base.Http.hInternet);
-        pStream->Base.Http.hInternet = NULL;
-    }
-
-    // If the file is not there or is not available for random access, report error
-    pStream->BaseClose(pStream);
-    return false;
-
-#else
-
     // Not supported
     SetLastError(ERROR_NOT_SUPPORTED);
     pStream = pStream;
     return false;
-
-#endif
 }
 
 static bool BaseHttp_Read(
@@ -719,66 +618,6 @@ static bool BaseHttp_Read(
     void * pvBuffer,                        // Pointer to data to be read
     DWORD dwBytesToRead)                    // Number of bytes to read from the file
 {
-#ifdef PLATFORM_WINDOWS
-    ULONGLONG ByteOffset = (pByteOffset != NULL) ? *pByteOffset : pStream->Base.Http.FilePos;
-    DWORD dwTotalBytesRead = 0;
-
-    // Do we have to read anything at all?
-    if(dwBytesToRead != 0)
-    {
-        HINTERNET hRequest;
-        LPCTSTR szFileName;
-        LPBYTE pbBuffer = (LPBYTE)pvBuffer;
-        TCHAR szRangeRequest[0x80];
-        DWORD dwStartOffset = (DWORD)ByteOffset;
-        DWORD dwEndOffset = dwStartOffset + dwBytesToRead;
-
-        // Open HTTP request to the file
-        szFileName = BaseHttp_ExtractServerName(pStream->szFileName, NULL);
-        hRequest = HttpOpenRequest(pStream->Base.Http.hConnect, _T("GET"), szFileName, NULL, NULL, NULL, INTERNET_FLAG_NO_CACHE_WRITE, 0);
-        if(hRequest != NULL)
-        {
-            // Add range request to the HTTP headers
-            // http://www.clevercomponents.com/articles/article015/resuming.asp
-            _stprintf(szRangeRequest, _T("Range: bytes=%u-%u"), (unsigned int)dwStartOffset, (unsigned int)dwEndOffset);
-            HttpAddRequestHeaders(hRequest, szRangeRequest, 0xFFFFFFFF, HTTP_ADDREQ_FLAG_ADD_IF_NEW); 
-
-            // Send the request to the server
-            if(HttpSendRequest(hRequest, NULL, 0, NULL, 0))
-            {
-                while(dwTotalBytesRead < dwBytesToRead)
-                {
-                    DWORD dwBlockBytesToRead = dwBytesToRead - dwTotalBytesRead;
-                    DWORD dwBlockBytesRead = 0;
-
-                    // Read the block from the file
-                    if(dwBlockBytesToRead > 0x200)
-                        dwBlockBytesToRead = 0x200;
-                    InternetReadFile(hRequest, pbBuffer, dwBlockBytesToRead, &dwBlockBytesRead);
-
-                    // Check for end
-                    if(dwBlockBytesRead == 0)
-                        break;
-
-                    // Move buffers
-                    dwTotalBytesRead += dwBlockBytesRead;
-                    pbBuffer += dwBlockBytesRead;
-                }
-            }
-            InternetCloseHandle(hRequest);
-        }
-    }
-
-    // Increment the current file position by number of bytes read
-    pStream->Base.Http.FilePos = ByteOffset + dwTotalBytesRead;
-
-    // If the number of bytes read doesn't match the required amount, return false
-    if(dwTotalBytesRead != dwBytesToRead)
-        SetLastError(ERROR_HANDLE_EOF);
-    return (dwTotalBytesRead == dwBytesToRead);
-
-#else
-
     // Not supported
     pStream = pStream;
     pByteOffset = pByteOffset;
@@ -786,23 +625,11 @@ static bool BaseHttp_Read(
     dwBytesToRead = dwBytesToRead;
     SetLastError(ERROR_NOT_SUPPORTED);
     return false;
-
-#endif
 }
 
 static void BaseHttp_Close(TFileStream * pStream)
 {
-#ifdef PLATFORM_WINDOWS
-    if(pStream->Base.Http.hConnect != NULL)
-        InternetCloseHandle(pStream->Base.Http.hConnect);
-    pStream->Base.Http.hConnect = NULL;
-
-    if(pStream->Base.Http.hInternet != NULL)
-        InternetCloseHandle(pStream->Base.Http.hInternet);
-    pStream->Base.Http.hInternet = NULL;
-#else
     pStream = pStream;
-#endif
 }
 
 // Initializes base functions for the mapped file

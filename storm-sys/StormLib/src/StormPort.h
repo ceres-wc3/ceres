@@ -49,7 +49,6 @@
   #include <ctype.h>
   #include <stdio.h>
   #include <windows.h>
-  #include <wininet.h>
   #define PLATFORM_LITTLE_ENDIAN
 
   #ifdef _WIN64
