@@ -5,16 +5,16 @@ authors = ["mori"]
 edition = "2018"
 
 [dependencies]
-#ceres-mpq = {path = "../ceres-mpq"}
+ceres-mpq = {path = "../ceres-mpq"}
 ceres-parsers = {path = "../ceres-parsers"}
 ceres-core = {path = "../ceres-core"}
 
-log = "0.4"
-chrono = "0.4"
-pest = "2.1"
-rlua = "0.16"
-failure = "0.1"
+log = "0.4.6"
+chrono = "0.4.6"
+pest = "2.1.1"
+rlua = "0.16.3"
+failure = "0.1.5"
 
 [dependencies.clap]
-version = "2.33"
+version = "2.33.0"
 default-features = false

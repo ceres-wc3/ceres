@@ -3,7 +3,6 @@ use log::error;
 
 use failure::{Error, ResultExt};
 
-
 fn main() -> Result<(), Box<std::error::Error>> {
     let matches = clap_app!(Ceres =>
         (version: "0.1.2")
@@ -12,19 +11,18 @@ fn main() -> Result<(), Box<std::error::Error>> {
         (@subcommand build =>
             (about: "Uses the build.lua file in the current directory to build a map.")
             (setting: clap::AppSettings::TrailingVarArg)
+            (@arg dir: --dir -d +takes_value "Sets the project directory.")
             (@arg BUILD_ARGS: ... "Arguments to pass to the build script.")
         )
         (@subcommand run =>
-            (about: "Uses the build.lua file in the current directory to build a map, and then runs it.")
-            (setting: clap::AppSettings::TrailingVarArg)
-            (@arg BUILD_ARGS: ... "Arguments to pass to the build script.")
-        )
-        (@subcommand parse => (@arg FILE: +required "Debug."))
-        (@subcommand newbuild => 
-            (about: "Uses a build.lua file to build a map.")
+            (about: "Uses the build.lua file in the current directory to build and run a map.")
             (setting: clap::AppSettings::TrailingVarArg)
             (@arg dir: --dir -d +takes_value "Sets the project directory.")
             (@arg BUILD_ARGS: ... "Arguments to pass to the build script.")
+        )
+        (@subcommand parse => (@arg FILE: +required "Debug."))
+        (@subcommand mpqtest =>
+            (@arg FILE: +required)
         )
     )
     .get_matches();
@@ -46,10 +44,14 @@ fn main() -> Result<(), Box<std::error::Error>> {
 
 fn run(matches: clap::ArgMatches) -> Result<(), Error> {
     if let Some(arg) = matches.subcommand_matches("build") {
-        // let mut ceres = ceres_core::Ceres::new()?;
-        // ceres
-        //     .build_map(arg.value_of("MAPDIR").unwrap())
-        //     .context("Could not build map.")?;
+        let project_dir = arg.value_of("dir").map(std::path::PathBuf::from).unwrap_or_else(|| std::env::current_dir().unwrap());
+
+        let script_args = arg
+            .values_of("BUILD_ARGS")
+            .map(std::iter::Iterator::collect)
+            .unwrap_or_else(Vec::new);
+
+        ceres_core::execute(ceres_core::CeresRunMode::Build, project_dir, script_args)?;
     } else if let Some(arg) = matches.subcommand_matches("run") {
         // let mut ceres = ceres_core::Ceres::new()?;
         // ceres
@@ -80,12 +82,16 @@ fn run(matches: clap::ArgMatches) -> Result<(), Error> {
 
         prnt(a, 0);
     } else if let Some(arg) = matches.subcommand_matches("newbuild") {
-        let script_args = arg
-            .values_of("BUILD_ARGS")
-            .map(std::iter::Iterator::collect)
-            .unwrap_or_else(Vec::new);
+        
+    } else if let Some(arg) = matches.subcommand_matches("mpqtest") {
+        use ceres_mpq as mpq;
 
-        ceres_core::run_build_script(None, script_args)?;
+        let filename = arg.value_of("FILE").unwrap();
+        dbg!(filename);
+
+        let archive = mpq::MPQArchive::open(filename)?;
+        let file = archive.open_file("(listfile)")?;
+        println!("{}", String::from_utf8_lossy(&file.read_contents()?))
     }
 
     Ok(())

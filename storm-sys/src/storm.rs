@@ -149,63 +149,63 @@ pub type HASH_STRING = ::std::option::Option<
 #[repr(u32)]
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
 pub enum _SFileInfoClass {
-    SFileMpqFileName = 0,
+    SFileMpqFileName     = 0,
     SFileMpqStreamBitmap = 1,
     SFileMpqUserDataOffset = 2,
     SFileMpqUserDataHeader = 3,
-    SFileMpqUserData = 4,
+    SFileMpqUserData     = 4,
     SFileMpqHeaderOffset = 5,
-    SFileMpqHeaderSize = 6,
-    SFileMpqHeader = 7,
+    SFileMpqHeaderSize   = 6,
+    SFileMpqHeader       = 7,
     SFileMpqHetTableOffset = 8,
     SFileMpqHetTableSize = 9,
-    SFileMpqHetHeader = 10,
-    SFileMpqHetTable = 11,
+    SFileMpqHetHeader    = 10,
+    SFileMpqHetTable     = 11,
     SFileMpqBetTableOffset = 12,
     SFileMpqBetTableSize = 13,
-    SFileMpqBetHeader = 14,
-    SFileMpqBetTable = 15,
+    SFileMpqBetHeader    = 14,
+    SFileMpqBetTable     = 15,
     SFileMpqHashTableOffset = 16,
     SFileMpqHashTableSize64 = 17,
     SFileMpqHashTableSize = 18,
-    SFileMpqHashTable = 19,
+    SFileMpqHashTable    = 19,
     SFileMpqBlockTableOffset = 20,
     SFileMpqBlockTableSize64 = 21,
     SFileMpqBlockTableSize = 22,
-    SFileMpqBlockTable = 23,
+    SFileMpqBlockTable   = 23,
     SFileMpqHiBlockTableOffset = 24,
     SFileMpqHiBlockTableSize64 = 25,
     SFileMpqHiBlockTable = 26,
-    SFileMpqSignatures = 27,
+    SFileMpqSignatures   = 27,
     SFileMpqStrongSignatureOffset = 28,
     SFileMpqStrongSignatureSize = 29,
     SFileMpqStrongSignature = 30,
     SFileMpqArchiveSize64 = 31,
-    SFileMpqArchiveSize = 32,
+    SFileMpqArchiveSize  = 32,
     SFileMpqMaxFileCount = 33,
     SFileMpqFileTableSize = 34,
-    SFileMpqSectorSize = 35,
+    SFileMpqSectorSize   = 35,
     SFileMpqNumberOfFiles = 36,
     SFileMpqRawChunkSize = 37,
-    SFileMpqStreamFlags = 38,
-    SFileMpqFlags = 39,
-    SFileInfoPatchChain = 40,
-    SFileInfoFileEntry = 41,
-    SFileInfoHashEntry = 42,
-    SFileInfoHashIndex = 43,
-    SFileInfoNameHash1 = 44,
-    SFileInfoNameHash2 = 45,
-    SFileInfoNameHash3 = 46,
-    SFileInfoLocale = 47,
-    SFileInfoFileIndex = 48,
-    SFileInfoByteOffset = 49,
-    SFileInfoFileTime = 50,
-    SFileInfoFileSize = 51,
+    SFileMpqStreamFlags  = 38,
+    SFileMpqFlags        = 39,
+    SFileInfoPatchChain  = 40,
+    SFileInfoFileEntry   = 41,
+    SFileInfoHashEntry   = 42,
+    SFileInfoHashIndex   = 43,
+    SFileInfoNameHash1   = 44,
+    SFileInfoNameHash2   = 45,
+    SFileInfoNameHash3   = 46,
+    SFileInfoLocale      = 47,
+    SFileInfoFileIndex   = 48,
+    SFileInfoByteOffset  = 49,
+    SFileInfoFileTime    = 50,
+    SFileInfoFileSize    = 51,
     SFileInfoCompressedSize = 52,
-    SFileInfoFlags = 53,
+    SFileInfoFlags       = 53,
     SFileInfoEncryptionKey = 54,
     SFileInfoEncryptionKeyRaw = 55,
-    SFileInfoCRC32 = 56,
+    SFileInfoCRC32       = 56,
 }
 pub use self::_SFileInfoClass as SFileInfoClass;
 pub type SFILE_DOWNLOAD_CALLBACK = ::std::option::Option<
@@ -240,8 +240,8 @@ pub struct TFileStream {
 #[derive(Debug, Copy, Clone)]
 pub struct _TBitArray {
     pub NumberOfBytes: DWORD,
-    pub NumberOfBits: DWORD,
-    pub Elements: [BYTE; 1usize],
+    pub NumberOfBits:  DWORD,
+    pub Elements:      [BYTE; 1usize],
 }
 #[test]
 fn bindgen_test_layout__TBitArray() {
@@ -290,9 +290,9 @@ pub type TBitArray = _TBitArray;
 #[repr(C)]
 #[derive(Debug, Copy, Clone)]
 pub struct _TMPQUserData {
-    pub dwID: DWORD,
-    pub cbUserDataSize: DWORD,
-    pub dwHeaderOffs: DWORD,
+    pub dwID:             DWORD,
+    pub cbUserDataSize:   DWORD,
+    pub dwHeaderOffs:     DWORD,
     pub cbUserDataHeader: DWORD,
 }
 #[test]
@@ -352,33 +352,33 @@ pub type TMPQUserData = _TMPQUserData;
 #[repr(C, packed)]
 #[derive(Debug, Copy, Clone)]
 pub struct _TMPQHeader {
-    pub dwID: DWORD,
-    pub dwHeaderSize: DWORD,
-    pub dwArchiveSize: DWORD,
-    pub wFormatVersion: USHORT,
-    pub wSectorSize: USHORT,
-    pub dwHashTablePos: DWORD,
-    pub dwBlockTablePos: DWORD,
-    pub dwHashTableSize: DWORD,
-    pub dwBlockTableSize: DWORD,
-    pub HiBlockTablePos64: ULONGLONG,
-    pub wHashTablePosHi: USHORT,
-    pub wBlockTablePosHi: USHORT,
-    pub ArchiveSize64: ULONGLONG,
-    pub BetTablePos64: ULONGLONG,
-    pub HetTablePos64: ULONGLONG,
-    pub HashTableSize64: ULONGLONG,
-    pub BlockTableSize64: ULONGLONG,
+    pub dwID:               DWORD,
+    pub dwHeaderSize:       DWORD,
+    pub dwArchiveSize:      DWORD,
+    pub wFormatVersion:     USHORT,
+    pub wSectorSize:        USHORT,
+    pub dwHashTablePos:     DWORD,
+    pub dwBlockTablePos:    DWORD,
+    pub dwHashTableSize:    DWORD,
+    pub dwBlockTableSize:   DWORD,
+    pub HiBlockTablePos64:  ULONGLONG,
+    pub wHashTablePosHi:    USHORT,
+    pub wBlockTablePosHi:   USHORT,
+    pub ArchiveSize64:      ULONGLONG,
+    pub BetTablePos64:      ULONGLONG,
+    pub HetTablePos64:      ULONGLONG,
+    pub HashTableSize64:    ULONGLONG,
+    pub BlockTableSize64:   ULONGLONG,
     pub HiBlockTableSize64: ULONGLONG,
-    pub HetTableSize64: ULONGLONG,
-    pub BetTableSize64: ULONGLONG,
-    pub dwRawChunkSize: DWORD,
-    pub MD5_BlockTable: [::std::os::raw::c_uchar; 16usize],
-    pub MD5_HashTable: [::std::os::raw::c_uchar; 16usize],
-    pub MD5_HiBlockTable: [::std::os::raw::c_uchar; 16usize],
-    pub MD5_BetTable: [::std::os::raw::c_uchar; 16usize],
-    pub MD5_HetTable: [::std::os::raw::c_uchar; 16usize],
-    pub MD5_MpqHeader: [::std::os::raw::c_uchar; 16usize],
+    pub HetTableSize64:     ULONGLONG,
+    pub BetTableSize64:     ULONGLONG,
+    pub dwRawChunkSize:     DWORD,
+    pub MD5_BlockTable:     [::std::os::raw::c_uchar; 16usize],
+    pub MD5_HashTable:      [::std::os::raw::c_uchar; 16usize],
+    pub MD5_HiBlockTable:   [::std::os::raw::c_uchar; 16usize],
+    pub MD5_BetTable:       [::std::os::raw::c_uchar; 16usize],
+    pub MD5_HetTable:       [::std::os::raw::c_uchar; 16usize],
+    pub MD5_MpqHeader:      [::std::os::raw::c_uchar; 16usize],
 }
 #[test]
 fn bindgen_test_layout__TMPQHeader() {
@@ -667,11 +667,11 @@ pub type TMPQHeader = _TMPQHeader;
 #[repr(C)]
 #[derive(Debug, Copy, Clone)]
 pub struct _TMPQHash {
-    pub dwName1: DWORD,
-    pub dwName2: DWORD,
-    pub lcLocale: USHORT,
-    pub Platform: BYTE,
-    pub Reserved: BYTE,
+    pub dwName1:      DWORD,
+    pub dwName2:      DWORD,
+    pub lcLocale:     USHORT,
+    pub Platform:     BYTE,
+    pub Reserved:     BYTE,
     pub dwBlockIndex: DWORD,
 }
 #[test]
@@ -752,9 +752,9 @@ pub type TMPQHash = _TMPQHash;
 #[derive(Debug, Copy, Clone)]
 pub struct _TMPQBlock {
     pub dwFilePos: DWORD,
-    pub dwCSize: DWORD,
-    pub dwFSize: DWORD,
-    pub dwFlags: DWORD,
+    pub dwCSize:   DWORD,
+    pub dwFSize:   DWORD,
+    pub dwFlags:   DWORD,
 }
 #[test]
 fn bindgen_test_layout__TMPQBlock() {
@@ -813,10 +813,10 @@ pub type TMPQBlock = _TMPQBlock;
 #[repr(C)]
 #[derive(Debug, Copy, Clone)]
 pub struct _TPatchInfo {
-    pub dwLength: DWORD,
-    pub dwFlags: DWORD,
+    pub dwLength:   DWORD,
+    pub dwFlags:    DWORD,
     pub dwDataSize: DWORD,
-    pub md5: [BYTE; 16usize],
+    pub md5:        [BYTE; 16usize],
 }
 #[test]
 fn bindgen_test_layout__TPatchInfo() {
@@ -876,14 +876,14 @@ pub type TPatchInfo = _TPatchInfo;
 #[derive(Debug, Copy, Clone)]
 pub struct _TFileEntry {
     pub FileNameHash: ULONGLONG,
-    pub ByteOffset: ULONGLONG,
-    pub FileTime: ULONGLONG,
-    pub dwFileSize: DWORD,
-    pub dwCmpSize: DWORD,
-    pub dwFlags: DWORD,
-    pub dwCrc32: DWORD,
-    pub md5: [BYTE; 16usize],
-    pub szFileName: *mut ::std::os::raw::c_char,
+    pub ByteOffset:   ULONGLONG,
+    pub FileTime:     ULONGLONG,
+    pub dwFileSize:   DWORD,
+    pub dwCmpSize:    DWORD,
+    pub dwFlags:      DWORD,
+    pub dwCrc32:      DWORD,
+    pub md5:          [BYTE; 16usize],
+    pub szFileName:   *mut ::std::os::raw::c_char,
 }
 #[test]
 fn bindgen_test_layout__TFileEntry() {
@@ -993,8 +993,8 @@ pub type TFileEntry = _TFileEntry;
 #[derive(Debug, Copy, Clone)]
 pub struct _TMPQExtHeader {
     pub dwSignature: DWORD,
-    pub dwVersion: DWORD,
-    pub dwDataSize: DWORD,
+    pub dwVersion:   DWORD,
+    pub dwDataSize:  DWORD,
 }
 #[test]
 fn bindgen_test_layout__TMPQExtHeader() {
@@ -1043,15 +1043,15 @@ pub type TMPQExtHeader = _TMPQExtHeader;
 #[repr(C)]
 #[derive(Debug, Copy, Clone)]
 pub struct _TMPQHetHeader {
-    pub ExtHdr: TMPQExtHeader,
-    pub dwTableSize: DWORD,
-    pub dwEntryCount: DWORD,
-    pub dwTotalCount: DWORD,
+    pub ExtHdr:            TMPQExtHeader,
+    pub dwTableSize:       DWORD,
+    pub dwEntryCount:      DWORD,
+    pub dwTotalCount:      DWORD,
     pub dwNameHashBitSize: DWORD,
-    pub dwIndexSizeTotal: DWORD,
-    pub dwIndexSizeExtra: DWORD,
-    pub dwIndexSize: DWORD,
-    pub dwIndexTableSize: DWORD,
+    pub dwIndexSizeTotal:  DWORD,
+    pub dwIndexSizeExtra:  DWORD,
+    pub dwIndexSize:       DWORD,
+    pub dwIndexTableSize:  DWORD,
 }
 #[test]
 fn bindgen_test_layout__TMPQHetHeader() {
@@ -1162,26 +1162,26 @@ pub type TMPQHetHeader = _TMPQHetHeader;
 #[repr(C)]
 #[derive(Debug, Copy, Clone)]
 pub struct _TMPQBetHeader {
-    pub ExtHdr: TMPQExtHeader,
-    pub dwTableSize: DWORD,
-    pub dwEntryCount: DWORD,
-    pub dwUnknown08: DWORD,
-    pub dwTableEntrySize: DWORD,
-    pub dwBitIndex_FilePos: DWORD,
-    pub dwBitIndex_FileSize: DWORD,
-    pub dwBitIndex_CmpSize: DWORD,
+    pub ExtHdr:               TMPQExtHeader,
+    pub dwTableSize:          DWORD,
+    pub dwEntryCount:         DWORD,
+    pub dwUnknown08:          DWORD,
+    pub dwTableEntrySize:     DWORD,
+    pub dwBitIndex_FilePos:   DWORD,
+    pub dwBitIndex_FileSize:  DWORD,
+    pub dwBitIndex_CmpSize:   DWORD,
     pub dwBitIndex_FlagIndex: DWORD,
-    pub dwBitIndex_Unknown: DWORD,
-    pub dwBitCount_FilePos: DWORD,
-    pub dwBitCount_FileSize: DWORD,
-    pub dwBitCount_CmpSize: DWORD,
+    pub dwBitIndex_Unknown:   DWORD,
+    pub dwBitCount_FilePos:   DWORD,
+    pub dwBitCount_FileSize:  DWORD,
+    pub dwBitCount_CmpSize:   DWORD,
     pub dwBitCount_FlagIndex: DWORD,
-    pub dwBitCount_Unknown: DWORD,
+    pub dwBitCount_Unknown:   DWORD,
     pub dwBitTotal_NameHash2: DWORD,
     pub dwBitExtra_NameHash2: DWORD,
     pub dwBitCount_NameHash2: DWORD,
-    pub dwNameHashArraySize: DWORD,
-    pub dwFlagCount: DWORD,
+    pub dwNameHashArraySize:  DWORD,
+    pub dwFlagCount:          DWORD,
 }
 #[test]
 fn bindgen_test_layout__TMPQBetHeader() {
@@ -1428,16 +1428,16 @@ pub type TMPQBetHeader = _TMPQBetHeader;
 #[repr(C)]
 #[derive(Debug, Copy, Clone)]
 pub struct _TMPQHetTable {
-    pub pBetIndexes: *mut TBitArray,
-    pub pNameHashes: LPBYTE,
-    pub AndMask64: ULONGLONG,
-    pub OrMask64: ULONGLONG,
-    pub dwEntryCount: DWORD,
-    pub dwTotalCount: DWORD,
+    pub pBetIndexes:       *mut TBitArray,
+    pub pNameHashes:       LPBYTE,
+    pub AndMask64:         ULONGLONG,
+    pub OrMask64:          ULONGLONG,
+    pub dwEntryCount:      DWORD,
+    pub dwTotalCount:      DWORD,
     pub dwNameHashBitSize: DWORD,
-    pub dwIndexSizeTotal: DWORD,
-    pub dwIndexSizeExtra: DWORD,
-    pub dwIndexSize: DWORD,
+    pub dwIndexSizeTotal:  DWORD,
+    pub dwIndexSizeExtra:  DWORD,
+    pub dwIndexSize:       DWORD,
 }
 #[test]
 fn bindgen_test_layout__TMPQHetTable() {
@@ -1556,25 +1556,25 @@ pub type TMPQHetTable = _TMPQHetTable;
 #[repr(C)]
 #[derive(Debug, Copy, Clone)]
 pub struct _TMPQBetTable {
-    pub pNameHashes: *mut TBitArray,
-    pub pFileTable: *mut TBitArray,
-    pub pFileFlags: LPDWORD,
-    pub dwTableEntrySize: DWORD,
-    pub dwBitIndex_FilePos: DWORD,
-    pub dwBitIndex_FileSize: DWORD,
-    pub dwBitIndex_CmpSize: DWORD,
+    pub pNameHashes:          *mut TBitArray,
+    pub pFileTable:           *mut TBitArray,
+    pub pFileFlags:           LPDWORD,
+    pub dwTableEntrySize:     DWORD,
+    pub dwBitIndex_FilePos:   DWORD,
+    pub dwBitIndex_FileSize:  DWORD,
+    pub dwBitIndex_CmpSize:   DWORD,
     pub dwBitIndex_FlagIndex: DWORD,
-    pub dwBitIndex_Unknown: DWORD,
-    pub dwBitCount_FilePos: DWORD,
-    pub dwBitCount_FileSize: DWORD,
-    pub dwBitCount_CmpSize: DWORD,
+    pub dwBitIndex_Unknown:   DWORD,
+    pub dwBitCount_FilePos:   DWORD,
+    pub dwBitCount_FileSize:  DWORD,
+    pub dwBitCount_CmpSize:   DWORD,
     pub dwBitCount_FlagIndex: DWORD,
-    pub dwBitCount_Unknown: DWORD,
+    pub dwBitCount_Unknown:   DWORD,
     pub dwBitTotal_NameHash2: DWORD,
     pub dwBitExtra_NameHash2: DWORD,
     pub dwBitCount_NameHash2: DWORD,
-    pub dwEntryCount: DWORD,
-    pub dwFlagCount: DWORD,
+    pub dwEntryCount:         DWORD,
+    pub dwFlagCount:          DWORD,
 }
 #[test]
 fn bindgen_test_layout__TMPQBetTable() {
@@ -1809,7 +1809,7 @@ pub type TMPQBetTable = _TMPQBetTable;
 #[repr(C)]
 #[derive(Debug, Copy, Clone)]
 pub struct _TMPQNamePrefix {
-    pub nLength: usize,
+    pub nLength:       usize,
     pub szPatchPrefix: [::std::os::raw::c_char; 1usize],
 }
 #[test]
@@ -1851,8 +1851,8 @@ pub type TMPQNamePrefix = _TMPQNamePrefix;
 pub struct _TMPQNameCache {
     pub FirstNameOffset: DWORD,
     pub FreeSpaceOffset: DWORD,
-    pub TotalCacheSize: DWORD,
-    pub SearchOffset: DWORD,
+    pub TotalCacheSize:  DWORD,
+    pub SearchOffset:    DWORD,
 }
 #[test]
 fn bindgen_test_layout__TMPQNameCache() {
@@ -1911,39 +1911,39 @@ pub type TMPQNameCache = _TMPQNameCache;
 #[repr(C)]
 #[derive(Copy, Clone)]
 pub struct _TMPQArchive {
-    pub pStream: *mut TFileStream,
-    pub UserDataPos: ULONGLONG,
-    pub MpqPos: ULONGLONG,
-    pub FileSize: ULONGLONG,
-    pub haPatch: *mut _TMPQArchive,
-    pub haBase: *mut _TMPQArchive,
-    pub pPatchPrefix: *mut TMPQNamePrefix,
-    pub pUserData: *mut TMPQUserData,
-    pub pHeader: *mut TMPQHeader,
-    pub pHashTable: *mut TMPQHash,
-    pub pHetTable: *mut TMPQHetTable,
-    pub pFileTable: *mut TFileEntry,
-    pub pfnHashString: HASH_STRING,
-    pub UserData: TMPQUserData,
-    pub HeaderData: [DWORD; 52usize],
-    pub dwHETBlockSize: DWORD,
-    pub dwBETBlockSize: DWORD,
-    pub dwMaxFileCount: DWORD,
-    pub dwFileTableSize: DWORD,
-    pub dwReservedFiles: DWORD,
-    pub dwSectorSize: DWORD,
-    pub dwFileFlags1: DWORD,
-    pub dwFileFlags2: DWORD,
-    pub dwFileFlags3: DWORD,
-    pub dwAttrFlags: DWORD,
-    pub dwFlags: DWORD,
-    pub dwSubType: DWORD,
-    pub pfnAddFileCB: SFILE_ADDFILE_CALLBACK,
-    pub pvAddFileUserData: *mut ::std::os::raw::c_void,
-    pub pfnCompactCB: SFILE_COMPACT_CALLBACK,
+    pub pStream:               *mut TFileStream,
+    pub UserDataPos:           ULONGLONG,
+    pub MpqPos:                ULONGLONG,
+    pub FileSize:              ULONGLONG,
+    pub haPatch:               *mut _TMPQArchive,
+    pub haBase:                *mut _TMPQArchive,
+    pub pPatchPrefix:          *mut TMPQNamePrefix,
+    pub pUserData:             *mut TMPQUserData,
+    pub pHeader:               *mut TMPQHeader,
+    pub pHashTable:            *mut TMPQHash,
+    pub pHetTable:             *mut TMPQHetTable,
+    pub pFileTable:            *mut TFileEntry,
+    pub pfnHashString:         HASH_STRING,
+    pub UserData:              TMPQUserData,
+    pub HeaderData:            [DWORD; 52usize],
+    pub dwHETBlockSize:        DWORD,
+    pub dwBETBlockSize:        DWORD,
+    pub dwMaxFileCount:        DWORD,
+    pub dwFileTableSize:       DWORD,
+    pub dwReservedFiles:       DWORD,
+    pub dwSectorSize:          DWORD,
+    pub dwFileFlags1:          DWORD,
+    pub dwFileFlags2:          DWORD,
+    pub dwFileFlags3:          DWORD,
+    pub dwAttrFlags:           DWORD,
+    pub dwFlags:               DWORD,
+    pub dwSubType:             DWORD,
+    pub pfnAddFileCB:          SFILE_ADDFILE_CALLBACK,
+    pub pvAddFileUserData:     *mut ::std::os::raw::c_void,
+    pub pfnCompactCB:          SFILE_COMPACT_CALLBACK,
     pub CompactBytesProcessed: ULONGLONG,
-    pub CompactTotalBytes: ULONGLONG,
-    pub pvCompactUserData: *mut ::std::os::raw::c_void,
+    pub CompactTotalBytes:     ULONGLONG,
+    pub pvCompactUserData:     *mut ::std::os::raw::c_void,
 }
 #[test]
 fn bindgen_test_layout__TMPQArchive() {
@@ -2294,35 +2294,35 @@ pub type TMPQArchive = _TMPQArchive;
 #[repr(C)]
 #[derive(Copy, Clone)]
 pub struct _TMPQFile {
-    pub pStream: *mut TFileStream,
-    pub ha: *mut TMPQArchive,
-    pub pHashEntry: *mut TMPQHash,
-    pub pFileEntry: *mut TFileEntry,
-    pub RawFilePos: ULONGLONG,
-    pub MpqFilePos: ULONGLONG,
-    pub dwHashIndex: DWORD,
-    pub dwFileKey: DWORD,
-    pub dwFilePos: DWORD,
-    pub dwMagic: DWORD,
-    pub hfPatch: *mut _TMPQFile,
-    pub pPatchInfo: *mut TPatchInfo,
-    pub SectorOffsets: LPDWORD,
-    pub SectorChksums: LPDWORD,
-    pub pbFileData: LPBYTE,
-    pub cbFileData: DWORD,
-    pub dwCompression0: DWORD,
-    pub dwSectorCount: DWORD,
+    pub pStream:           *mut TFileStream,
+    pub ha:                *mut TMPQArchive,
+    pub pHashEntry:        *mut TMPQHash,
+    pub pFileEntry:        *mut TFileEntry,
+    pub RawFilePos:        ULONGLONG,
+    pub MpqFilePos:        ULONGLONG,
+    pub dwHashIndex:       DWORD,
+    pub dwFileKey:         DWORD,
+    pub dwFilePos:         DWORD,
+    pub dwMagic:           DWORD,
+    pub hfPatch:           *mut _TMPQFile,
+    pub pPatchInfo:        *mut TPatchInfo,
+    pub SectorOffsets:     LPDWORD,
+    pub SectorChksums:     LPDWORD,
+    pub pbFileData:        LPBYTE,
+    pub cbFileData:        DWORD,
+    pub dwCompression0:    DWORD,
+    pub dwSectorCount:     DWORD,
     pub dwPatchedFileSize: DWORD,
-    pub dwDataSize: DWORD,
-    pub pbFileSector: LPBYTE,
-    pub dwSectorOffs: DWORD,
-    pub dwSectorSize: DWORD,
-    pub hctx: [::std::os::raw::c_uchar; 96usize],
-    pub dwCrc32: DWORD,
-    pub nAddFileError: ::std::os::raw::c_int,
+    pub dwDataSize:        DWORD,
+    pub pbFileSector:      LPBYTE,
+    pub dwSectorOffs:      DWORD,
+    pub dwSectorSize:      DWORD,
+    pub hctx:              [::std::os::raw::c_uchar; 96usize],
+    pub dwCrc32:           DWORD,
+    pub nAddFileError:     ::std::os::raw::c_int,
     pub bLoadedSectorCRCs: bool,
-    pub bCheckSectorCRCs: bool,
-    pub bIsWriteHandle: bool,
+    pub bCheckSectorCRCs:  bool,
+    pub bIsWriteHandle:    bool,
 }
 #[test]
 fn bindgen_test_layout__TMPQFile() {
@@ -2631,16 +2631,16 @@ pub type TMPQFile = _TMPQFile;
 #[repr(C)]
 #[derive(Copy, Clone)]
 pub struct _SFILE_FIND_DATA {
-    pub cFileName: [::std::os::raw::c_char; 1024usize],
-    pub szPlainName: *mut ::std::os::raw::c_char,
-    pub dwHashIndex: DWORD,
+    pub cFileName:    [::std::os::raw::c_char; 1024usize],
+    pub szPlainName:  *mut ::std::os::raw::c_char,
+    pub dwHashIndex:  DWORD,
     pub dwBlockIndex: DWORD,
-    pub dwFileSize: DWORD,
-    pub dwFileFlags: DWORD,
-    pub dwCompSize: DWORD,
+    pub dwFileSize:   DWORD,
+    pub dwFileFlags:  DWORD,
+    pub dwCompSize:   DWORD,
     pub dwFileTimeLo: DWORD,
     pub dwFileTimeHi: DWORD,
-    pub lcLocale: LCID,
+    pub lcLocale:     LCID,
 }
 #[test]
 fn bindgen_test_layout__SFILE_FIND_DATA() {
@@ -2759,16 +2759,16 @@ pub type SFILE_FIND_DATA = _SFILE_FIND_DATA;
 #[repr(C)]
 #[derive(Debug, Copy, Clone)]
 pub struct _SFILE_CREATE_MPQ {
-    pub cbSize: DWORD,
-    pub dwMpqVersion: DWORD,
-    pub pvUserData: *mut ::std::os::raw::c_void,
-    pub cbUserData: DWORD,
-    pub dwStreamFlags: DWORD,
-    pub dwFileFlags1: DWORD,
-    pub dwFileFlags2: DWORD,
-    pub dwFileFlags3: DWORD,
-    pub dwAttrFlags: DWORD,
-    pub dwSectorSize: DWORD,
+    pub cbSize:         DWORD,
+    pub dwMpqVersion:   DWORD,
+    pub pvUserData:     *mut ::std::os::raw::c_void,
+    pub cbUserData:     DWORD,
+    pub dwStreamFlags:  DWORD,
+    pub dwFileFlags1:   DWORD,
+    pub dwFileFlags2:   DWORD,
+    pub dwFileFlags3:   DWORD,
+    pub dwAttrFlags:    DWORD,
+    pub dwSectorSize:   DWORD,
     pub dwRawChunkSize: DWORD,
     pub dwMaxFileCount: DWORD,
 }
@@ -2916,7 +2916,7 @@ pub struct _TStreamBitmap {
     pub StreamSize: ULONGLONG,
     pub BitmapSize: DWORD,
     pub BlockCount: DWORD,
-    pub BlockSize: DWORD,
+    pub BlockSize:  DWORD,
     pub IsComplete: DWORD,
 }
 #[test]

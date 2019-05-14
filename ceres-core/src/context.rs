@@ -17,22 +17,21 @@ pub enum CeresContextError {
 }
 
 pub struct CeresPaths {
-    root: PathBuf,
-    src: PathBuf,
-    lib: PathBuf,
+    root:   PathBuf,
+    src:    PathBuf,
+    lib:    PathBuf,
     target: PathBuf,
-    maps: PathBuf
+    maps:   PathBuf,
 }
 
 pub struct CeresContext {
-    config: CeresConfig,
+    config:   CeresConfig,
     root_dir: PathBuf,
 }
 
 impl CeresContext {
     pub fn new<P: Into<PathBuf>>(root_dir: P) -> Result<CeresContext, CeresContextError> {
-        let config =
-            CeresConfig::initialize().map_err(CeresContextError::CouldNotReadConfig)?;
+        let config = CeresConfig::initialize().map_err(CeresContextError::CouldNotReadConfig)?;
 
         Ok(CeresContext {
             config,
@@ -131,16 +130,16 @@ pub enum ConfigError {
 
 #[derive(Deserialize)]
 pub struct CeresConfig {
-    pub run: CeresRunConfig,
+    pub run:    CeresRunConfig,
     pub reload: Option<CeresReloadConfig>,
 }
 
 #[derive(Deserialize)]
 pub struct CeresRunConfig {
     pub wc3_start_command: String,
-    pub is_wine: Option<bool>,
-    pub wine_disk_prefix: Option<String>,
-    pub window_mode: Option<String>,
+    pub is_wine:           Option<bool>,
+    pub wine_disk_prefix:  Option<String>,
+    pub window_mode:       Option<String>,
 }
 
 #[derive(Deserialize)]

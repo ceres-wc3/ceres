@@ -4,5 +4,9 @@ target/
 Cargo.lock
 output.log
 
-storm-sys/
-ceres-mpq/
+.vscode/
+
+# storm-sys/
+# ceres-mpq/
+
+**.log

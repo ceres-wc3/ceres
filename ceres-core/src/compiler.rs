@@ -3,15 +3,14 @@ use std::fmt::Write;
 use std::fs;
 use std::path::{Path, PathBuf};
 
-use failure::{err_msg, format_err, Error, Fail, ResultExt};
+use failure::{err_msg, format_err, Error, Fail};
 use matches::matches;
 use pest::iterators::Pair;
 use pest::Parser;
-use rlua::Lua;
+use rlua::prelude::*;
 
 use ceres_parsers::lua;
 
-use crate::context::CeresContext;
 use crate::util;
 
 #[derive(Debug, Fail)]
@@ -28,7 +27,7 @@ pub enum CompilerError {
         cause: std::io::Error,
         path: PathBuf,
     },
-    #[fail(display = "Code error in {:?}", path)]
+    #[fail(display = "Error in {:?}", path)]
     CodeError {
         #[fail(cause)]
         cause: CodeError,
@@ -55,10 +54,10 @@ impl CodeUnit {
 }
 
 pub struct CodeCompiler<'a> {
-    lua: &'a Lua,
+    lua:        &'a Lua,
     code_units: IndexMap<String, CodeUnit>,
-    src_dirs: &'a [PathBuf],
-    root_dir: &'a PathBuf,
+    src_dirs:   &'a [PathBuf],
+    root_dir:   &'a PathBuf,
 }
 
 impl<'a> CodeCompiler<'a> {
@@ -97,7 +96,7 @@ impl<'a> CodeCompiler<'a> {
         if !self.code_units.contains_key(module_name) {
             let source = fs::read_to_string(&file_path).map_err(|err| CompilerError::IOError {
                 cause: err,
-                path: file_path.as_ref().to_path_buf(),
+                path:  file_path.as_ref().to_path_buf(),
             })?;
 
             let source = self.compile_file(&source, file_path)?;
@@ -117,7 +116,7 @@ impl<'a> CodeCompiler<'a> {
         let parsed = lua::LuaParser::parse(lua::Rule::Chunk, input).map_err(|err| {
             CompilerError::ParseError {
                 cause: err,
-                path: file_path.as_ref().to_path_buf(),
+                path:  file_path.as_ref().to_path_buf(),
             }
         })?;
 
@@ -155,7 +154,7 @@ impl<'a> CodeCompiler<'a> {
                                 pest::error::Error::new_from_span(pest_error, pair.as_span());
                             CompilerError::CodeError {
                                 cause: CodeError { diagnostic, cause },
-                                path: file_path.as_ref().to_path_buf(),
+                                path:  file_path.as_ref().to_path_buf(),
                             }
                         })?;
                 }
@@ -235,7 +234,7 @@ impl<'a> CodeCompiler<'a> {
         let include_content =
             fs::read_to_string(&full_include_path).map_err(|err| CompilerError::IOError {
                 cause: err,
-                path: full_include_path.to_path_buf(),
+                path:  full_include_path.to_path_buf(),
             })?;
 
         write!(out_string, "{}", include_content).unwrap();
@@ -250,13 +249,13 @@ impl<'a> CodeCompiler<'a> {
     ) -> Result<(), Error> {
         for exp in macro_args.into_inner() {
             let result: Result<(), Error> = self.lua.context(|ctx| {
-                let values: rlua::MultiValue =
+                let values: LuaMultiValue =
                     ctx.load(&format!("return ({})", exp.as_str())).eval()?;
 
                 for value in values {
                     match value {
-                        rlua::Value::Function(func) => {
-                            let values = func.call::<_, rlua::MultiValue>(())?;
+                        LuaValue::Function(func) => {
+                            let values = func.call::<_, LuaMultiValue>(())?;
 
                             for value in values {
                                 self.emit_lua_value(value, out_string);
@@ -276,15 +275,15 @@ impl<'a> CodeCompiler<'a> {
         Ok(())
     }
 
-    fn emit_lua_value(&self, value: rlua::Value, out_string: &mut String) {
+    fn emit_lua_value(&self, value: LuaValue, out_string: &mut String) {
         match value {
-            rlua::Value::String(string) => {
+            LuaValue::String(string) => {
                 write!(out_string, r#""{}""#, string.to_str().unwrap()).unwrap();
             }
-            rlua::Value::Number(number) => {
+            LuaValue::Number(number) => {
                 write!(out_string, "{}", &number.to_string()).unwrap();
             }
-            rlua::Value::Integer(number) => {
+            LuaValue::Integer(number) => {
                 write!(out_string, "{}", &number.to_string()).unwrap();
             }
 

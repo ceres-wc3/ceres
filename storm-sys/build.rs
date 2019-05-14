@@ -55,7 +55,6 @@ fn main() {
         .warnings(false)
         .define("_7ZIP_ST", None)
         .flag("-w")
-
         .files(find_source_files("StormLib/src"))
         .files(find_source_files("StormLib/src/libtomcrypt/src/hashes"))
         .files(find_source_files("StormLib/src/libtomcrypt/src/math"))
@@ -70,16 +69,13 @@ fn main() {
         .files(find_source_files("StormLib/src/pklib"))
         .files(find_source_files("StormLib/src/zlib"))
         .files(find_source_files("StormLib/src/jenkins"))
-
         .file("StormLib/src/lzma/C/LzFind.c")
         .file("StormLib/src/lzma/C/LzmaEnc.c")
         .file("StormLib/src/lzma/C/LzmaDec.c")
-
         .file("StormLib/src/adpcm/adpcm.cpp")
         .file("StormLib/src/sparse/sparse.cpp");
 
-
-    if target_triple.contains("windows") {
+    if target_triple.contains("windows-gnu") {
         println!("cargo:rustc-link-lib=dylib=wininet");
         println!("cargo:rustc-link-lib=static-nobundle=stdc++");
         println!("cargo:rustc-link-lib=static-nobundle=gcc");
