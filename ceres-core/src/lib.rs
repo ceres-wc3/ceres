@@ -1,7 +1,6 @@
 #![allow(dead_code)]
 
-pub mod context;
-
+mod config;
 mod compiler;
 mod util;
 
@@ -20,21 +19,19 @@ use compiler::CodeCompiler;
 
 struct CeresBuildArtifact {
     path: PathBuf,
-    kind: CeresBuildArtifactKind
+    kind: CeresBuildArtifactKind,
 }
 
 impl CeresBuildArtifact {
     fn new(kind: CeresBuildArtifactKind, path: PathBuf) -> CeresBuildArtifact {
-        CeresBuildArtifact {
-            kind, path
-        }
+        CeresBuildArtifact { kind, path }
     }
 }
 
 enum CeresBuildArtifactKind {
     Script,
     MapFolder,
-    MapArchive
+    MapArchive,
 }
 
 enum CeresBuildMode {
@@ -51,7 +48,7 @@ enum CeresBuildMode {
 pub enum CeresRunMode {
     Build,
     RunMap,
-    LiveReload
+    LiveReload,
 }
 
 struct CeresBuildArgs {
@@ -251,8 +248,8 @@ impl Ceres {
         Ok(main_script)
     }
 
-        pub fn run_map(&mut self, path: &PathBuf) -> Result<(), Error> {
-            unimplemented!()
+    pub fn run_map(&mut self, path: &PathBuf) -> Result<(), Error> {
+        unimplemented!()
         // self.build_map(map_name).context("Could not build map.")?;
 
         // let config = self.context.config();
@@ -295,7 +292,11 @@ impl Ceres {
     }
 }
 
-pub fn execute(run_mode: CeresRunMode, project_dir: PathBuf, script_args: Vec<&str>) -> Result<(), Error> {
+pub fn execute(
+    run_mode: CeresRunMode,
+    project_dir: PathBuf,
+    script_args: Vec<&str>,
+) -> Result<(), Error> {
     let build_script_path = project_dir.join("build.lua");
     let build_script = fs::read_to_string(&build_script_path)
         .with_context(|_| format!("error reading {:?}", build_script_path))?;
@@ -343,7 +344,13 @@ pub fn execute(run_mode: CeresRunMode, project_dir: PathBuf, script_args: Vec<&s
 
         let artifacts = ceres.artifacts();
 
-        let map_artifacts: Vec<_> = artifacts.iter().filter(|x| matches!(x.kind, CeresBuildArtifactKind::MapArchive) || matches!(x.kind, CeresBuildArtifactKind::MapFolder)).collect();
+        let map_artifacts: Vec<_> = artifacts
+            .iter()
+            .filter(|x| {
+                matches!(x.kind, CeresBuildArtifactKind::MapArchive)
+                    || matches!(x.kind, CeresBuildArtifactKind::MapFolder)
+            })
+            .collect();
 
         if map_artifacts.len() > 1 {
             println!("[ERROR] The build script produced more than one map artifact - unclear which map to run.");

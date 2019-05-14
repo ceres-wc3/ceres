@@ -44,7 +44,10 @@ fn main() -> Result<(), Box<std::error::Error>> {
 
 fn run(matches: clap::ArgMatches) -> Result<(), Error> {
     if let Some(arg) = matches.subcommand_matches("build") {
-        let project_dir = arg.value_of("dir").map(std::path::PathBuf::from).unwrap_or_else(|| std::env::current_dir().unwrap());
+        let project_dir = arg
+            .value_of("dir")
+            .map(std::path::PathBuf::from)
+            .unwrap_or_else(|| std::env::current_dir().unwrap());
 
         let script_args = arg
             .values_of("BUILD_ARGS")
@@ -82,7 +85,7 @@ fn run(matches: clap::ArgMatches) -> Result<(), Error> {
 
         prnt(a, 0);
     } else if let Some(arg) = matches.subcommand_matches("newbuild") {
-        
+
     } else if let Some(arg) = matches.subcommand_matches("mpqtest") {
         use ceres_mpq as mpq;
 
