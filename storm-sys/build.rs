@@ -56,7 +56,6 @@ fn main() {
         .define("_7ZIP_ST", None)
         .flag("-w")
         .files(find_source_files("StormLib/src"))
-
         .files(find_source_files("StormLib/src/libtomcrypt/src/hashes"))
         .files(find_source_files("StormLib/src/libtomcrypt/src/math"))
         .files(find_source_files("StormLib/src/libtomcrypt/src/misc"))
@@ -65,12 +64,10 @@ fn main() {
         .files(find_source_files("StormLib/src/libtomcrypt/src/pk/pkcs1"))
         .files(find_source_files("StormLib/src/libtomcrypt/src/pk/rsa"))
         .files(find_source_files("StormLib/src/libtommath"))
-
         .files(find_source_files("StormLib/src/bzip2"))
         .files(find_source_files("StormLib/src/huffman"))
         .files(find_source_files("StormLib/src/pklib"))
         .files(find_source_files("StormLib/src/jenkins"))
-
         .file("StormLib/src/zlib/crc32.c")
         .file("StormLib/src/zlib/trees.c")
         .file("StormLib/src/zlib/compress.c")
@@ -80,7 +77,6 @@ fn main() {
         .file("StormLib/src/zlib/deflate.c")
         .file("StormLib/src/zlib/inflate.c")
         .file("StormLib/src/zlib/zutil.c")
-
         .file("StormLib/src/lzma/C/LzFind.c")
         .file("StormLib/src/lzma/C/LzmaEnc.c")
         .file("StormLib/src/lzma/C/LzmaDec.c")

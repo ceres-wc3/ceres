@@ -9,8 +9,6 @@ ceres-mpq = {path = "../ceres-mpq"}
 ceres-parsers = {path = "../ceres-parsers"}
 ceres-core = {path = "../ceres-core"}
 
-log = "0.4.6"
-chrono = "0.4.6"
 pest = "2.1.1"
 rlua = "0.16.3"
 failure = "0.1.5"

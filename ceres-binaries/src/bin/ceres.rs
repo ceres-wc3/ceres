@@ -1,7 +1,6 @@
 use clap::clap_app;
-use log::error;
 
-use failure::{Error, ResultExt};
+use failure::{Error};
 
 fn main() -> Result<(), Box<std::error::Error>> {
     let matches = clap_app!(Ceres =>
@@ -42,24 +41,27 @@ fn main() -> Result<(), Box<std::error::Error>> {
     });
 }
 
+fn run_build(arg: &clap::ArgMatches, mode: ceres_core::CeresRunMode) -> Result<(), Error> {
+    let project_dir = arg
+        .value_of("dir")
+        .map(std::path::PathBuf::from)
+        .unwrap_or_else(|| std::env::current_dir().unwrap());
+
+    let script_args = arg
+        .values_of("BUILD_ARGS")
+        .map(std::iter::Iterator::collect)
+        .unwrap_or_else(Vec::new);
+
+    ceres_core::execute(mode, project_dir, script_args)?;
+
+    Ok(())
+}
+
 fn run(matches: clap::ArgMatches) -> Result<(), Error> {
     if let Some(arg) = matches.subcommand_matches("build") {
-        let project_dir = arg
-            .value_of("dir")
-            .map(std::path::PathBuf::from)
-            .unwrap_or_else(|| std::env::current_dir().unwrap());
-
-        let script_args = arg
-            .values_of("BUILD_ARGS")
-            .map(std::iter::Iterator::collect)
-            .unwrap_or_else(Vec::new);
-
-        ceres_core::execute(ceres_core::CeresRunMode::Build, project_dir, script_args)?;
+        run_build(arg, ceres_core::CeresRunMode::Build)?;
     } else if let Some(arg) = matches.subcommand_matches("run") {
-        // let mut ceres = ceres_core::Ceres::new()?;
-        // ceres
-        //     .run_map(arg.value_of("MAPDIR").unwrap())
-        //     .context("Could not run map.")?;
+        run_build(arg, ceres_core::CeresRunMode::RunMap)?;
     } else if let Some(arg) = matches.subcommand_matches("parse") {
         // this is just some debugging ...
 
@@ -84,8 +86,6 @@ fn run(matches: clap::ArgMatches) -> Result<(), Error> {
         }
 
         prnt(a, 0);
-    } else if let Some(arg) = matches.subcommand_matches("newbuild") {
-
     } else if let Some(arg) = matches.subcommand_matches("mpqtest") {
         use ceres_mpq as mpq;
 

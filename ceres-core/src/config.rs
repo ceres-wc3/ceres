@@ -1,5 +1,6 @@
 use std::fs;
 use std::path::PathBuf;
+use std::path::Path;
 
 use failure::Fail;
 use serde::Deserialize;
@@ -34,12 +35,8 @@ pub struct CeresReloadConfig {
 }
 
 impl CeresConfig {
-    fn initialize() -> Result<CeresConfig, ConfigError> {
-        Self::load_map_config()
-    }
-
-    fn load_map_config() -> Result<CeresConfig, ConfigError> {
-        let ceres_config_path = std::env::current_dir().unwrap().join("ceres.toml");
+    pub fn new<P: AsRef<Path>>(path: P) -> Result<CeresConfig, ConfigError> {
+        let ceres_config_path = path.as_ref().join("ceres.toml");
 
         let ceres_config_content = fs::read(&ceres_config_path)
             .map_err(|err| ConfigError::ConfigReadError(ceres_config_path.clone(), err))?;

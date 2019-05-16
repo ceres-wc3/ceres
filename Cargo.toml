@@ -3,7 +3,7 @@
 members = [
     "storm-sys",
     "ceres-mpq",
-    "ceres-utils",
+    "ceres-binaries",
     "ceres-parsers",
     "ceres-core"
 ]

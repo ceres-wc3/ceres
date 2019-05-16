@@ -4,7 +4,7 @@ mod config;
 mod compiler;
 mod util;
 
-use failure::{Error, Fail, ResultExt};
+use failure::{Error, Fail, ResultExt, err_msg, format_err};
 use rlua::prelude::*;
 use matches::matches;
 
@@ -14,6 +14,7 @@ use std::fs;
 use std::path::PathBuf;
 use std::rc::Rc;
 use std::sync::Arc;
+use std::process::Command;
 
 use compiler::CodeCompiler;
 
@@ -173,6 +174,10 @@ impl Ceres {
         main_path: &PathBuf,
         src_folders: &[PathBuf],
     ) -> Result<PathBuf, Error> {
+        if !map_path.exists() {
+            return Err(format_err!("could not find the map in {:?}", map_path));
+        }
+
         let map_script_path = map_path.join("war3map.lua");
         let script_out_path = out_path.join("war3map.lua");
 
@@ -249,44 +254,47 @@ impl Ceres {
     }
 
     pub fn run_map(&mut self, path: &PathBuf) -> Result<(), Error> {
-        unimplemented!()
-        // self.build_map(map_name).context("Could not build map.")?;
+        let config = config::CeresConfig::new(&self.project_dir)?;
 
-        // let config = self.context.config();
-        // let wc3_cmd = config.run.wc3_start_command.clone();
-        // let map_launch_dir = if config.run.is_wine.unwrap_or(false) {
-        //     format!(
-        //         "{}{}",
-        //         config.run.wine_disk_prefix.as_ref().unwrap(),
-        //         self.context.map_target_dir_path(map_name).display()
-        //     )
-        // } else {
-        //     self.context
-        //         .map_target_dir_path(map_name)
-        //         .display()
-        //         .to_string()
-        // };
+        if let Some(run_config) = config.run {
+            let wc3_cmd = run_config.wc3_start_command.clone();
 
-        // let mut cmd = Command::new(wc3_cmd);
+            let map_launch_dir: PathBuf = if run_config.is_wine.unwrap_or(false) {
+                format!(
+                    "{}{}",
+                    run_config
+                        .wine_disk_prefix
+                        .ok_or_else(|| err_msg("missing wine_disk_prefix key from config"))?,
+                    path.canonicalize().unwrap().display()
+                )
+                .into()
+            } else {
+                path.into()
+            };
 
-        // let window_mode = config
-        //     .run
-        //     .window_mode
-        //     .as_ref()
-        //     .map_or("windowedfullscreen", |s| &s);
+            let mut cmd = Command::new(wc3_cmd);
 
-        // let log_file = File::create(self.context.file_path("war3.log"))
-        //     .context("Could not create wc3 log file.")?;
+            let window_mode = run_config
+                .window_mode
+                .unwrap_or_else(|| "windowedfullscreen".into());
 
-        // cmd.arg("-loadfile")
-        //     .arg(map_launch_dir)
-        //     .arg("-windowmode")
-        //     .arg(window_mode)
-        //     .stdout(log_file.try_clone()?)
-        //     .stderr(log_file.try_clone()?);
+            let log_file = fs::File::create(self.project_dir.join("war3.log"))
+                .context("Could not create wc3 log file.")?;
 
-        // println!("starting wc3 with command line: {:?}", cmd);
-        // cmd.spawn().context("Could not launch wc3.")?;
+            cmd.arg("-loadfile")
+                .arg(map_launch_dir)
+                .arg("-windowmode")
+                .arg(window_mode)
+                .stdout(log_file.try_clone()?)
+                .stderr(log_file.try_clone()?);
+
+            println!("starting wc3 with command line: {:?}", cmd);
+            cmd.spawn().context("Could not launch wc3.")?;
+        } else {
+            return Err(err_msg("missing [run] section from config"));
+        }
+
+        Ok(())
 
         // Ok(())
     }
@@ -310,7 +318,7 @@ pub fn execute(
             let globals = ctx.globals();
 
             let build_fn = scope
-                .create_function_mut(|ctx, args: LuaTable| match ceres.start_build(args) {
+                .create_function_mut(|_ctx, args: LuaTable| match ceres.start_build(args) {
                     Ok(_) => Ok(()),
                     Err(err) => Err(LuaError::external(err)),
                 })

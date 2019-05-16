@@ -2,7 +2,6 @@
 
 use std::ffi::{c_void, CString};
 use std::ptr;
-use std::fmt::Display;
 
 use num_derive::FromPrimitive;
 use num_traits::FromPrimitive;
@@ -77,9 +76,9 @@ fn test_for_generic_error() -> Result<(), GenericError> {
 impl std::string::ToString for GenericErrorCode {
     fn to_string(&self) -> String {
         match self {
-            GenericErrorCode::NoError => format!("No error"),
-            GenericErrorCode::FileNotFound => format!("File not found"),
-            GenericErrorCode::AccessDenied => format!("Access denied"),
+            GenericErrorCode::NoError => "No error".into(),
+            GenericErrorCode::FileNotFound => "File not found".into(),
+            GenericErrorCode::AccessDenied => "Access denied".into(),
             _ => format!("Error Code: {}", *self as u32),
         }
     }

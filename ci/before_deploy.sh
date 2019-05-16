@@ -19,7 +19,7 @@ main() {
     test -f Cargo.lock || cargo generate-lockfile
 
     # TODO Update this to build the artifacts that matter to you
-    CERES_NOBUNDLE_CPP=1 cross rustc --manifest-path ceres-utils/Cargo.toml --bin ceres --release --target $TARGET -- -C lto
+    CERES_NOBUNDLE_CPP=1 cross rustc --manifest-path ceres-binaries/Cargo.toml --bin ceres --release --target $TARGET -- -C lto
 
     if [ -e "target/$TARGET/release/ceres.exe" ]; then
         cp target/$TARGET/release/ceres.exe $stage/
