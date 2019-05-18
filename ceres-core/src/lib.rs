@@ -15,6 +15,8 @@ use std::path::PathBuf;
 use std::rc::Rc;
 use std::sync::Arc;
 use std::process::Command;
+use std::collections::HashMap;
+use std::any::Any;
 
 use compiler::CodeCompiler;
 
@@ -114,9 +116,10 @@ impl Fail for ArcError {
 }
 
 struct Ceres {
-    lua:             Rc<Lua>,
-    project_dir:     PathBuf,
-    built_artifacts: Vec<CeresBuildArtifact>,
+    lua:                Rc<Lua>,
+    project_dir:        PathBuf,
+    built_artifacts:    Vec<CeresBuildArtifact>,
+    collected_metadata: HashMap<String, Box<dyn Any>>,
 }
 
 impl Ceres {
@@ -125,6 +128,7 @@ impl Ceres {
             lua,
             project_dir,
             built_artifacts: Default::default(),
+            collected_metadata: Default::default(),
         }
     }
 
@@ -295,15 +299,26 @@ impl Ceres {
         }
 
         Ok(())
-
-        // Ok(())
     }
+}
+
+fn send_manifest_data(port: u16) {
+    use std::net::TcpStream;
+
+    use std::io::Write;
+
+    let mut connection = TcpStream::connect(("localhost", port)).unwrap();
+
+    println!("Woof woof");
+
+    write!(connection, "Hello World!").unwrap();
 }
 
 pub fn execute(
     run_mode: CeresRunMode,
     project_dir: PathBuf,
     script_args: Vec<&str>,
+    manifest_port: Option<u16>,
 ) -> Result<(), Error> {
     let build_script_path = project_dir.join("build.lua");
     let build_script = fs::read_to_string(&build_script_path)
@@ -317,15 +332,25 @@ pub fn execute(
         ctx.scope(|scope| {
             let globals = ctx.globals();
 
-            let build_fn = scope
-                .create_function_mut(|_ctx, args: LuaTable| match ceres.start_build(args) {
-                    Ok(_) => Ok(()),
-                    Err(err) => Err(LuaError::external(err)),
-                })
-                .unwrap();
+            if manifest_port.is_none() {
+                let build_fn = scope
+                    .create_function_mut(|_ctx, args: LuaTable| match ceres.start_build(args) {
+                        Ok(_) => Ok(()),
+                        Err(err) => Err(LuaError::external(err)),
+                    })
+                    .unwrap();
+
+                globals.set("build", build_fn).unwrap();
+            } else {
+                let build_fn = scope
+                    .create_function_mut(|_ctx, _: LuaTable| Ok(()))
+                    .unwrap();
+
+                globals.set("build", build_fn).unwrap();
+                globals.set("MANIFEST_REQUESTED", true).unwrap();
+            }
 
             globals.set("ARGS", script_args).unwrap();
-            globals.set("build", build_fn).unwrap();
 
             let result: Result<_, LuaError> = ctx.load(&build_script).set_name("build.lua")?.exec();
 
@@ -340,6 +365,10 @@ pub fn execute(
                 },
                 other => other.into(),
             })?;
+
+            if let Some(port) = manifest_port {
+                send_manifest_data(port);
+            }
 
             Ok(())
         })

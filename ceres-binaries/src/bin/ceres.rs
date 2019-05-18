@@ -10,12 +10,14 @@ fn main() -> Result<(), Box<std::error::Error>> {
         (@subcommand build =>
             (about: "Uses the build.lua file in the current directory to build a map.")
             (setting: clap::AppSettings::TrailingVarArg)
+            (@arg manifest: --manifest +takes_value)
             (@arg dir: --dir -d +takes_value "Sets the project directory.")
             (@arg BUILD_ARGS: ... "Arguments to pass to the build script.")
         )
         (@subcommand run =>
             (about: "Uses the build.lua file in the current directory to build and run a map.")
             (setting: clap::AppSettings::TrailingVarArg)
+            (@arg manifest: --manifest +takes_value)
             (@arg dir: --dir -d +takes_value "Sets the project directory.")
             (@arg BUILD_ARGS: ... "Arguments to pass to the build script.")
         )
@@ -52,7 +54,11 @@ fn run_build(arg: &clap::ArgMatches, mode: ceres_core::CeresRunMode) -> Result<(
         .map(std::iter::Iterator::collect)
         .unwrap_or_else(Vec::new);
 
-    ceres_core::execute(mode, project_dir, script_args)?;
+    let manifest_port = arg
+        .value_of("manifest")
+        .map(|s| u16::from_str_radix(s, 10).unwrap());
+
+    ceres_core::execute(mode, project_dir, script_args, manifest_port)?;
 
     Ok(())
 }
