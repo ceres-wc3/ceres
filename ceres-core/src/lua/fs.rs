@@ -74,7 +74,7 @@ pub fn get_fs_module(ctx: LuaContext, base_path: PathBuf) -> LuaTable {
             )
             .unwrap();
 
-        table.set("readFile", func).unwrap();
+        table.set("writeFile", func).unwrap();
     }
 
     {
@@ -95,7 +95,7 @@ pub fn get_fs_module(ctx: LuaContext, base_path: PathBuf) -> LuaTable {
             })
             .unwrap();
 
-        table.set("writeFile", func).unwrap();
+        table.set("readFile", func).unwrap();
     }
 
     table

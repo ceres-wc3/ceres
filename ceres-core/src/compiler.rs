@@ -11,6 +11,7 @@ use rlua::prelude::*;
 use err_derive::Error;
 use indexmap::IndexMap;
 use walkdir::WalkDir;
+use itertools::Itertools;
 
 use ceres_parsers::lua;
 
@@ -59,7 +60,7 @@ impl ProjectModuleProvider {
                             None
                         }
                     })
-                    .fold("".to_string(), |acc, s| acc + "." + s);
+                    .join(".");
 
                 let module_path = &module_path[..(module_path.len() - 4)];
 

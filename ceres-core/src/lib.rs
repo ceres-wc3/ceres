@@ -49,7 +49,7 @@ pub fn run_build_script(
 
     let result: Result<(), AnyError> = lua.context(|ctx| {
         // scoped so that we don't have to synchronize anything...
-        ctx.scope(|scope| {
+        ctx.scope(|_| {
             lua::setup_ceres_environ(
                 ctx,
                 project_dir,
@@ -69,6 +69,8 @@ pub fn run_build_script(
             Ok(())
         })
     });
+
+    result?;
 
     Ok(())
 }

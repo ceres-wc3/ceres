@@ -33,9 +33,11 @@ fn main() -> Result<(), AnyError> {
             println!("[ERROR] An error has occured. Error chain:");
             println!("{}", error);
 
-            // for cause in error.iter_causes() {
-            //     println!("{}", cause);
-            // }
+            let mut cause = error.source();
+            while let Some(inner_cause) = cause {
+                println!("{}", &inner_cause);
+                cause = inner_cause.source();
+            }
 
             1
         }

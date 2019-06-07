@@ -11,10 +11,12 @@ pub fn get_compile_script_luafn<'lua>(ctx: LuaContext<'lua>) -> LuaFunction<'lua
 
             let map_script: LuaString = args.get("mapScript").unwrap();
 
-            let module_provider = compiler::ProjectModuleProvider::new(
+            let mut module_provider = compiler::ProjectModuleProvider::new(
                 src_directory.to_str().unwrap().into(),
                 lib_directory.to_str().unwrap().into(),
             );
+
+            module_provider.scan();
 
             let macro_provider = macros::get_threadlocal_macro_provider();
 

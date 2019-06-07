@@ -59,6 +59,14 @@ pub fn setup_ceres_environ(
         )
         .unwrap();
 
+    ceres_table
+        .set(
+            "getScriptArgs",
+            ctx.create_function(move |_, _: ()| Ok(script_args.clone()))
+                .unwrap(),
+        )
+        .unwrap();
+
     let fs_table = fs::get_fs_module(ctx, base_path);
 
     globals.set("fs", fs_table).unwrap();

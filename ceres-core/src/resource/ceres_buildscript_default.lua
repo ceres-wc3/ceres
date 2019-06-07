@@ -31,7 +31,7 @@ local manifest = {
     targetDirectory = "target/"
 }
 
-if ceres.isManifestRequested()
+if ceres.isManifestRequested() then
     ceres.sendManifest(manifest)
     return
 end
