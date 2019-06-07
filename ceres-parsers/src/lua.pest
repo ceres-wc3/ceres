@@ -103,7 +103,6 @@ ExpList = { Exp ~ ("," ~ Exp)* }
 VarArg = { "..." }
 
 ExpAtom = _{
-    MacroCall |
     LiteralNil |
     LiteralTrue |
     LiteralFalse |
@@ -142,7 +141,7 @@ Index = {
 SimpleCall = { Args }
 MethodCall = { ":" ~ Ident ~ Args }
 
-Call = _{
+Call = {
     SimpleCall |
     MethodCall
 }
@@ -155,20 +154,12 @@ Var = {
 }
 
 Value = {
-    Var ~ Call*
+    FunctionCall |
+    Var
 }
 
 FunctionCall = {
-    MacroCall |
     Var ~ Call+
-}
-
-Macro = {
-    "include" | "compiletime" | "require"
-}
-
-MacroCall = {
-    Macro ~ SimpleCall
 }
 
 Args = { "(" ~ ExpList? ~ ")" | TableConstructor | LiteralString }

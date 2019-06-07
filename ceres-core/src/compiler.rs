@@ -92,16 +92,19 @@ pub trait MacroProvider {
     );
 }
 
+#[derive(Debug)]
 pub struct CompilationData {
     pub(crate) name: String,
     pub(crate) src:  String,
 }
 
+#[derive(Debug)]
 pub struct CompiledModule {
     pub(crate) name: String,
     pub(crate) src:  String,
 }
 
+#[derive(Debug)]
 pub struct MacroInvocation<'src> {
     pub(crate) id:         &'src str,
     pub(crate) args:       Pair<'src, lua::Rule>,
@@ -145,6 +148,7 @@ impl<'lua, MO: ModuleProvider, MA: MacroProvider> ScriptCompiler<'lua, MO, MA> {
         let mut out = String::new();
 
         out += SCRIPT_HEADER;
+        out += "\n\n";
 
         for (id, compiled_module) in &self.compiled_modules {
             let module_header_comment = format!("--[[ start of module \"{}\" ]]\n", id);
@@ -294,6 +298,7 @@ impl<'lua, MO: ModuleProvider, MA: MacroProvider> ScriptCompiler<'lua, MO, MA> {
 
         if let LuaValue::String(module_name) = &args[0] {
             let module_name = module_name.to_str().unwrap();
+            compilation_data.src += &format!("require(\"{}\")", module_name);
             self.add_module(module_name);
         } else {
             // TODO: Error handling
@@ -337,7 +342,7 @@ impl<'lua, MO: ModuleProvider, MA: MacroProvider> ScriptCompiler<'lua, MO, MA> {
 
     /// Will try to extract a macro invocation out of the given pair, returning `None` if it can't find one.
     fn macro_invocation<'src>(&self, pair: Pair<'src, lua::Rule>) -> Option<MacroInvocation<'src>> {
-        if pair.as_rule() != lua::Rule::Value {
+        if pair.as_rule() != lua::Rule::FunctionCall {
             return None;
         }
 
@@ -356,13 +361,13 @@ impl<'lua, MO: ModuleProvider, MA: MacroProvider> ScriptCompiler<'lua, MO, MA> {
             return None;
         }
 
-        let atomic_exp = var.into_iter().next()?.into_inner().next()?;
+        let ident = var.into_iter().next()?.into_inner().next()?;
 
-        if atomic_exp.as_rule() != lua::Rule::Ident {
+        if ident.as_rule() != lua::Rule::Ident {
             return None;
         }
 
-        let id = atomic_exp.as_str();
+        let id = ident.as_str();
 
         if !self.is_macro_id(id) {
             return None;
