@@ -1,4 +1,4 @@
--- ceres post-script start
+-- ceres map post-script start
 
 ceres.__oldMain = main
 ceres.__oldConfig = config
@@ -13,4 +13,4 @@ end
 
 ceres.catch(require("main"))
 
--- ceres post-script end
+-- ceres map post-script end

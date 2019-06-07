@@ -2,7 +2,6 @@ use std::fs;
 use std::path::PathBuf;
 use std::path::Path;
 
-use failure::Fail;
 use serde::Deserialize;
 
 #[derive(Fail, Debug)]

@@ -1,4 +1,4 @@
--- ceres header start
+-- ceres map header start
 
 local ceres = {
 }
@@ -83,4 +83,4 @@ require = function(name)
     end
 end
 
--- ceres header end
+-- ceres map header end

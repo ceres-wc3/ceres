@@ -1,8 +1,8 @@
 use clap::clap_app;
 
-use failure::{Error};
+use ceres_core::error::AnyError;
 
-fn main() -> Result<(), Box<std::error::Error>> {
+fn main() -> Result<(), AnyError> {
     let matches = clap_app!(Ceres =>
         (version: "0.1.2")
         (author: "mori <mori@reu.moe>")
@@ -33,9 +33,9 @@ fn main() -> Result<(), Box<std::error::Error>> {
             println!("[ERROR] An error has occured. Error chain:");
             println!("{}", error);
 
-            for cause in error.iter_causes() {
-                println!("{}", cause);
-            }
+            // for cause in error.iter_causes() {
+            //     println!("{}", cause);
+            // }
 
             1
         }
@@ -43,7 +43,7 @@ fn main() -> Result<(), Box<std::error::Error>> {
     });
 }
 
-fn run_build(arg: &clap::ArgMatches, mode: ceres_core::CeresRunMode) -> Result<(), Error> {
+fn run_build(arg: &clap::ArgMatches, mode: ceres_core::CeresRunMode) -> Result<(), AnyError> {
     let project_dir = arg
         .value_of("dir")
         .map(std::path::PathBuf::from)
@@ -58,12 +58,12 @@ fn run_build(arg: &clap::ArgMatches, mode: ceres_core::CeresRunMode) -> Result<(
         .value_of("manifest")
         .map(|s| u16::from_str_radix(s, 10).unwrap());
 
-    ceres_core::execute(mode, project_dir, script_args, manifest_port)?;
+    ceres_core::run_build_script(mode, project_dir, script_args, manifest_port)?;
 
     Ok(())
 }
 
-fn run(matches: clap::ArgMatches) -> Result<(), Error> {
+fn run(matches: clap::ArgMatches) -> Result<(), AnyError> {
     if let Some(arg) = matches.subcommand_matches("build") {
         run_build(arg, ceres_core::CeresRunMode::Build)?;
     } else if let Some(arg) = matches.subcommand_matches("run") {
@@ -93,14 +93,14 @@ fn run(matches: clap::ArgMatches) -> Result<(), Error> {
 
         prnt(a, 0);
     } else if let Some(arg) = matches.subcommand_matches("mpqtest") {
-        use ceres_mpq as mpq;
+        // use ceres_mpq as mpq;
 
-        let filename = arg.value_of("FILE").unwrap();
-        dbg!(filename);
+        // let filename = arg.value_of("FILE").unwrap();
+        // dbg!(filename);
 
-        let archive = mpq::MPQArchive::open(filename)?;
-        let file = archive.open_file("(listfile)")?;
-        println!("{}", String::from_utf8_lossy(&file.read_contents()?))
+        // let archive = mpq::MPQArchive::open(filename)?;
+        // let file = archive.open_file("(listfile)")?;
+        // println!("{}", String::from_utf8_lossy(&file.read_contents()?))
     }
 
     Ok(())
