@@ -11,9 +11,10 @@ use rlua::prelude::*;
 use std::fs;
 use std::path::PathBuf;
 use std::rc::Rc;
+use std::sync::Arc;
 
 use crate::error::AnyError;
-use crate::compiler::ScriptCompiler;
+use crate::error::CompilerError;
 
 #[derive(Copy, Clone)]
 pub enum CeresRunMode {
@@ -47,7 +48,7 @@ pub fn run_build_script(
 
     let lua = Rc::new(Lua::new());
 
-    let result: Result<(), AnyError> = lua.context(|ctx| {
+    let result: Result<(), LuaError> = lua.context(|ctx| {
         // scoped so that we don't have to synchronize anything...
         ctx.scope(|_| {
             lua::setup_ceres_environ(
@@ -70,7 +71,24 @@ pub fn run_build_script(
         })
     });
 
-    result?;
+    use std::any::Any;
+    if let Err(err) = &result {
+        println!("{:?}", err.type_id());
+    }
+
+    if let Err(LuaError::CallbackError{..}) = &result {
+        println!("wtf");
+    }
+
+    if let Err(LuaError::ExternalError(err)) = result {
+        if let Some(err) = err.downcast_ref::<CompilerError>() {
+            println!("[ERROR] A compiler error occured:\n{}", err);
+            std::process::exit(1);
+        }
+    } else if let Err(err) = result {
+        println!("[ERROR] A Lua error occured in the build script:\n{}", err);
+        std::process::exit(1);
+    }
 
     Ok(())
 }

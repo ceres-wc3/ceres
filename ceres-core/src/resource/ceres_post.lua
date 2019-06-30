@@ -1,16 +1,14 @@
--- ceres map post-script start
+--[[ ceres map post-script start ]]
+    ceres.__oldMain = main
+    ceres.__oldConfig = config
 
-ceres.__oldMain = main
-ceres.__oldConfig = config
+    function main()
+        __ceresMain()
+    end
 
-function main()
-    __ceresMain()
-end
+    function config()
+        __ceresConfig()
+    end
 
-function config()
-    __ceresConfig()
-end
-
-ceres.catch(require("main"))
-
--- ceres map post-script end
+    ceres.catch(require("main"))
+--[[ ceres map post-script end ]]

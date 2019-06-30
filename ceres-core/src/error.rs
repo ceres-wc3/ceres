@@ -1,9 +1,13 @@
 use err_derive::Error;
+use pest::error::Error as PestError;
+use rlua::prelude::LuaError;
 
 use std::path::Path;
 use std::path::PathBuf;
 use std::error::Error;
 use std::sync::Arc;
+
+use ceres_parsers::lua;
 
 pub type AnyError = Box<dyn Error + Sync + Send + 'static>;
 
@@ -36,5 +40,72 @@ impl IoError {
             path: path.as_ref().into(),
             cause,
         }
+    }
+}
+
+#[derive(Error, Debug)]
+#[error(display = "Could not compile file {:?}\nCause: {}", path, cause)]
+pub struct FileCompilationError {
+    path:  PathBuf,
+    cause: CompilerError,
+}
+
+impl FileCompilationError {
+    pub fn new(path: PathBuf, cause: CompilerError) -> FileCompilationError {
+        FileCompilationError { path, cause }
+    }
+}
+
+#[derive(Error, Debug)]
+pub enum CompilerError {
+    #[error(display = "Module not found: {}", module_name)]
+    ModuleNotFound { module_name: String },
+    #[error(display = "Could not parse file:\n{}", error)]
+    ParserFailed { error: PestError<lua::Rule> },
+    #[error(display = "Could not compile module {}:\n{}", module_name, error)]
+    ModuleError {
+        module_name: String,
+        error:       Box<FileCompilationError>,
+    },
+    #[error(display = "Cyclical dependency found involving module {}", module_name)]
+    CyclicalDependency { module_name: String },
+    #[error(display = "Macro invocation failed: {}\n{}", error, diagnostic)]
+    MacroError {
+        error:      Box<MacroInvocationError>,
+        diagnostic: PestError<lua::Rule>,
+    },
+}
+
+impl From<PestError<lua::Rule>> for CompilerError {
+    fn from(error: PestError<lua::Rule>) -> CompilerError {
+        CompilerError::ParserFailed { error }
+    }
+}
+
+#[derive(Error, Debug)]
+pub enum MacroInvocationError {
+    #[error(display = "Lua error while invoking macro: {}", error)]
+    LuaError { error: LuaError },
+    #[error(display = "Error while invoking macro: {}", message)]
+    MessageError { message: String },
+    #[error(display = "Compiler error while invoking macro: {}", error)]
+    CompilerError { error: CompilerError },
+}
+
+impl MacroInvocationError {
+    pub fn message(message: String) -> MacroInvocationError {
+        MacroInvocationError::MessageError { message }
+    }
+}
+
+impl From<LuaError> for MacroInvocationError {
+    fn from(error: LuaError) -> MacroInvocationError {
+        MacroInvocationError::LuaError { error }
+    }
+}
+
+impl From<CompilerError> for MacroInvocationError {
+    fn from(error: CompilerError) -> MacroInvocationError {
+        MacroInvocationError::CompilerError { error }
     }
 }

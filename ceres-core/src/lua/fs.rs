@@ -58,18 +58,33 @@ pub fn get_fs_module(ctx: LuaContext, base_path: PathBuf) -> LuaTable {
 
         let func = ctx
             .create_function(
-                move |_ctx: LuaContext, (path, content): (String, LuaString)| {
-                    let path = validate_path(&path)?;
-
-                    verify_base_path(&path, &base_path)?;
-
-                    fs::write(&path, content.as_bytes())
-                        .map_err(|err| {
-                            ContextError::new("Failed to write file", IoError::new(path, err))
+                move |ctx: LuaContext, (path, content): (String, LuaString)| {
+                    let result = validate_path(&path)
+                        .map_err(|err| err.to_string())
+                        .and_then(|path| {
+                            verify_base_path(&path, &base_path).map_err(|err| err.to_string())?;
+                            Ok(path)
                         })
-                        .map_err(LuaError::external)?;
+                        .and_then(|path| {
+                            fs::write(&path, content.as_bytes())
+                                .map_err(|err| {
+                                    ContextError::new(
+                                        "Failed to write file",
+                                        IoError::new(path, err),
+                                    )
+                                })
+                                .map_err(|err| err.to_string())
+                        });
 
-                    Ok(())
+                    match result {
+                        Ok(()) => return Ok((true, LuaValue::Nil)),
+                        Err(err) => {
+                            return Ok((
+                                false,
+                                LuaValue::String(ctx.create_string(&err)?),
+                            ))
+                        }
+                    }
                 },
             )
             .unwrap();
@@ -82,16 +97,28 @@ pub fn get_fs_module(ctx: LuaContext, base_path: PathBuf) -> LuaTable {
 
         let func = ctx
             .create_function(move |ctx: LuaContext, path: (String)| {
-                let path = validate_path(&path)?;
-
-                verify_base_path(&path, &base_path)?;
-
-                fs::read(&path)
-                    .map(|s| ctx.create_string(&s).unwrap())
-                    .map_err(|err| {
-                        ContextError::new("Failed to read file", IoError::new(path, err))
+                let result = validate_path(&path)
+                    .map_err(|err| err.to_string())
+                    .and_then(|path| {
+                        verify_base_path(&path, &base_path).map_err(|err| err.to_string())?;
+                        Ok(path)
                     })
-                    .map_err(LuaError::external)
+                    .and_then(|path| {
+                        fs::read(&path)
+                            .map(|s| ctx.create_string(&s).unwrap())
+                            .map_err(|err| {
+                                ContextError::new("Failed to read file", IoError::new(path, err))
+                            })
+                            .map_err(|err| err.to_string())
+                    });
+
+                match result {
+                    Ok(s) => Ok((LuaValue::String(s), LuaValue::Nil)),
+                    Err(err) => Ok((
+                        LuaValue::Nil,
+                        LuaValue::String(ctx.create_string(&err)?),
+                    )),
+                }
             })
             .unwrap();
 

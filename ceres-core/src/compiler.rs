@@ -17,14 +17,12 @@ use ceres_parsers::lua;
 
 use crate::lua::util::evaluate_macro_args;
 use crate::lua::util::value_to_string;
-
-enum CompilerError {
-    ModuleNotFound {},
-    ParserFailed {},
-}
+use crate::error::*;
 
 pub trait ModuleProvider {
     fn module_src(&self, module_name: &str) -> Option<String>;
+
+    fn module_path(&self, module_name: &str) -> Option<PathBuf>;
 }
 
 pub struct ProjectModuleProvider {
@@ -64,7 +62,8 @@ impl ProjectModuleProvider {
 
                 let module_path = &module_path[..(module_path.len() - 4)];
 
-                self.known_modules.insert(module_path.into(), entry.into_path());
+                self.known_modules
+                    .insert(module_path.into(), entry.into_path());
             }
         }
     }
@@ -74,9 +73,11 @@ impl ModuleProvider for ProjectModuleProvider {
     fn module_src(&self, module_name: &str) -> Option<String> {
         let path = self.known_modules.get(module_name);
 
-        path.and_then(|s| {
-            fs::read_to_string(s).ok()
-        })
+        path.and_then(|s| fs::read_to_string(s).ok())
+    }
+
+    fn module_path(&self, module_name: &str) -> Option<PathBuf> {
+        self.known_modules.get(module_name).map(|s| s.clone())
     }
 }
 
@@ -89,7 +90,7 @@ pub trait MacroProvider {
         id: &str,
         compilation_data: &mut CompilationData,
         macro_invocation: MacroInvocation,
-    );
+    ) -> Result<(), MacroInvocationError>;
 }
 
 #[derive(Debug)]
@@ -115,6 +116,8 @@ pub struct MacroInvocation<'src> {
 pub struct ScriptCompiler<'lua, MO: ModuleProvider, MA: MacroProvider> {
     pub(crate) ctx: LuaContext<'lua>,
 
+    map_script: Option<String>,
+
     // map of modules that have already been compiled
     compiled_modules: IndexMap<String, CompiledModule>,
     // set of modules that are currently in compilation
@@ -133,6 +136,8 @@ impl<'lua, MO: ModuleProvider, MA: MacroProvider> ScriptCompiler<'lua, MO, MA> {
         ScriptCompiler {
             ctx,
 
+            map_script: None,
+
             compiled_modules: Default::default(),
             compiling_modules: Default::default(),
 
@@ -147,8 +152,14 @@ impl<'lua, MO: ModuleProvider, MA: MacroProvider> ScriptCompiler<'lua, MO, MA> {
 
         let mut out = String::new();
 
-        out += SCRIPT_HEADER;
+        out += SCRIPT_HEADER.trim();
         out += "\n\n";
+
+        if let Some(map_script) = &self.map_script {
+            out += "--[[ map script start ]]\n";
+            out += map_script.trim();
+            out += "\n--[[ map script end ]]\n\n";
+        }
 
         for (id, compiled_module) in &self.compiled_modules {
             let module_header_comment = format!("--[[ start of module \"{}\" ]]\n", id);
@@ -170,8 +181,7 @@ impl<'lua, MO: ModuleProvider, MA: MacroProvider> ScriptCompiler<'lua, MO, MA> {
             out += &module_footer_comment;
         }
 
-        out += "\n";
-        out += SCRIPT_POST;
+        out += SCRIPT_POST.trim();
         out += "\n";
 
         out
@@ -179,49 +189,66 @@ impl<'lua, MO: ModuleProvider, MA: MacroProvider> ScriptCompiler<'lua, MO, MA> {
 
     /// tries to find and compile the given module by it's module name
     /// using the ModuleProvider
-    pub fn add_module(&mut self, module_name: &str) {
+    pub fn add_module(&mut self, module_name: &str) -> Result<(), CompilerError> {
         if self.compiling_modules.contains(module_name) {
-            // TODO: Error Handling
-            // Error case: A cyclic dependency
-            unimplemented!("unhandled error: a cyclic dependency detected");
+            return Err(CompilerError::CyclicalDependency {
+                module_name: module_name.into(),
+            });
         }
 
         if self.compiled_modules.contains_key(module_name) {
-            // happy path, module is already compiled
-            // we don't need to do anything
-            return;
+            return Ok(());
         }
 
         let src = self.module_provider.module_src(module_name);
 
         if src.is_none() {
-            // TODO: Error Handling
-            // Error case: Module does not exist
-            // This is not an error if the module is required as optional
-            unimplemented!("unhandled error: module {} does not exist", module_name)
+            return Err(CompilerError::ModuleNotFound {
+                module_name: module_name.into(),
+            });
         }
 
         let src = src.unwrap();
 
         self.compiling_modules.insert(module_name.into());
         let compiled_module = self.compile_module(module_name, &src);
+
+        if let Err(error) = compiled_module {
+            match &error {
+                CompilerError::ModuleError { .. } => return Err(error),
+                _ => {
+                    return Err(CompilerError::ModuleError {
+                        module_name: module_name.into(),
+                        error:       Box::new(FileCompilationError::new(
+                            self.module_provider.module_path(module_name).unwrap(),
+                            error,
+                        )),
+                    })
+                }
+            }
+        }
+
+        let compiled_module = compiled_module.unwrap();
+
         self.compiling_modules.remove(module_name);
         self.compiled_modules
             .insert(module_name.into(), compiled_module);
+
+        Ok(())
+    }
+
+    pub fn set_map_script(&mut self, map_script: String) {
+        self.map_script = Some(map_script);
     }
 
     /// will compile a single module with the given module name and source,
     /// as well as all of it's transitive dependencies, while processing macros
-    fn compile_module(&mut self, module_name: &str, src: &str) -> CompiledModule {
-        let parsed = lua::LuaParser::parse(lua::Rule::Chunk, src);
-
-        if parsed.is_err() {
-            // TODO: Error handling
-            // Error case: unparseable lua file
-            unimplemented!("unhandled error: lua file cannot be parsed")
-        }
-
-        let parsed = parsed.unwrap();
+    fn compile_module(
+        &mut self,
+        module_name: &str,
+        src: &str,
+    ) -> Result<CompiledModule, CompilerError> {
+        let parsed = lua::LuaParser::parse(lua::Rule::Chunk, src)?;
 
         let mut compilation_data = CompilationData {
             name: module_name.into(),
@@ -236,13 +263,25 @@ impl<'lua, MO: ModuleProvider, MA: MacroProvider> ScriptCompiler<'lua, MO, MA> {
                 continue;
             }
 
-            if let Some(invocation) = self.macro_invocation(pair) {
+            if let Some(invocation) = self.macro_invocation(pair.clone()) {
                 next_pair_start = invocation.span_end;
 
                 compilation_data.src += &src[emitted_index..invocation.span_start];
                 emitted_index = invocation.span_end;
 
-                self.handle_macro(&mut compilation_data, invocation);
+                self.handle_macro(&mut compilation_data, invocation)
+                    .map_err(|err| match err {
+                        MacroInvocationError::CompilerError { error } => error,
+                        _ => CompilerError::MacroError {
+                            error:      Box::new(err),
+                            diagnostic: pest::error::Error::new_from_span(
+                                pest::error::ErrorVariant::CustomError {
+                                    message: "here".into(),
+                                },
+                                pair.as_span(),
+                            ),
+                        },
+                    })?;
             }
         }
 
@@ -250,10 +289,10 @@ impl<'lua, MO: ModuleProvider, MA: MacroProvider> ScriptCompiler<'lua, MO, MA> {
             compilation_data.src += &src[emitted_index..src.len()];
         }
 
-        CompiledModule {
+        Ok(CompiledModule {
             name: compilation_data.name,
             src:  compilation_data.src,
-        }
+        })
     }
 
     fn is_macro_id(&self, id: &str) -> bool {
@@ -267,70 +306,62 @@ impl<'lua, MO: ModuleProvider, MA: MacroProvider> ScriptCompiler<'lua, MO, MA> {
         &mut self,
         compilation_data: &mut CompilationData,
         macro_invocation: MacroInvocation,
-    ) {
+    ) -> Result<(), MacroInvocationError> {
         let id = macro_invocation.id;
 
         match id {
-            "require" => self.handle_macro_require(compilation_data, macro_invocation),
-            "compiletime" => self.handle_macro_compiletime(compilation_data, macro_invocation),
-            id => {
-                self.macro_provider
-                    .handle_macro(self.ctx, id, compilation_data, macro_invocation)
-            }
+            "require" => self.handle_macro_require(compilation_data, macro_invocation)?,
+            "compiletime" => self.handle_macro_compiletime(compilation_data, macro_invocation)?,
+            id => self.macro_provider.handle_macro(
+                self.ctx,
+                id,
+                compilation_data,
+                macro_invocation,
+            )?,
         }
+
+        Ok(())
     }
 
     fn handle_macro_require(
         &mut self,
         compilation_data: &mut CompilationData,
         macro_invocation: MacroInvocation,
-    ) {
-        let args = evaluate_macro_args(self.ctx, macro_invocation.args)
-            .unwrap()
-            .into_vec();
+    ) -> Result<(), MacroInvocationError> {
+        let args = evaluate_macro_args(self.ctx, macro_invocation.args)?.into_vec();
 
         if args.is_empty() {
-            // TODO: Error handling
-            // Error case: Require must have at least one argument
-
-            unimplemented!("unhandled error: require macro requires at least one argument");
+            return Err(MacroInvocationError::message("Require macro requires at least one argument".into()));
         }
 
         if let LuaValue::String(module_name) = &args[0] {
             let module_name = module_name.to_str().unwrap();
             compilation_data.src += &format!("require(\"{}\")", module_name);
-            self.add_module(module_name);
+            self.add_module(module_name)?;
         } else {
-            // TODO: Error handling
-            // Error case: The first argument must be a string
-
-            unimplemented!("unhandled error: require macro's first argument must be a string")
+            return Err(MacroInvocationError::message("Require macro's first argument must be a string".into()));
         }
+
+        Ok(())
     }
 
     fn handle_macro_compiletime(
         &mut self,
         compilation_data: &mut CompilationData,
         macro_invocation: MacroInvocation,
-    ) {
+    ) -> Result<(), MacroInvocationError> {
         let mut args = evaluate_macro_args(self.ctx, macro_invocation.args)
             .unwrap()
             .into_vec();
 
         if args.len() > 1 || args.is_empty() {
-            // TODO: Error handling
-            // Error case: Compiletime macro supports only a single argument
-
-            unimplemented!("unhandled error: compiletime macro must have exactly one argument")
+            return Err(MacroInvocationError::message("Compiletime macro must have exactly one argument".into()));
         }
 
         let arg = args.remove(0);
 
         let value = if let LuaValue::Function(func) = arg {
-            // TODO: Error handling
-            // Error case: Compiletime callback errored out
-
-            func.call::<_, LuaValue>(()).unwrap()
+            func.call::<_, LuaValue>(())?
         } else {
             arg
         };
@@ -338,6 +369,8 @@ impl<'lua, MO: ModuleProvider, MA: MacroProvider> ScriptCompiler<'lua, MO, MA> {
         if let Some(s) = value_to_string(value) {
             compilation_data.src += &s;
         }
+
+        Ok(())
     }
 
     /// Will try to extract a macro invocation out of the given pair, returning `None` if it can't find one.

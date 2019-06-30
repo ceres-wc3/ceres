@@ -10,6 +10,7 @@ use crate::compiler;
 
 use crate::lua::util::evaluate_macro_args;
 use crate::lua::util::value_to_string;
+use crate::error::*;
 
 use compiler::MacroProvider;
 
@@ -36,7 +37,7 @@ impl MacroProvider for LuaMacroProvider {
         id: &str,
         compilation_data: &mut compiler::CompilationData,
         macro_invocation: compiler::MacroInvocation,
-    ) {
+    ) -> Result<(), MacroInvocationError> {
         let args = evaluate_macro_args(ctx, macro_invocation.args).unwrap();
         let callback: LuaFunction = {
             let registered_macros = self.registered_macros.borrow();
@@ -50,6 +51,8 @@ impl MacroProvider for LuaMacroProvider {
         if let LuaValue::String(value) = value {
             compilation_data.src += value.to_str().unwrap();
         }
+
+        Ok(())
     }
 }
 
@@ -64,8 +67,8 @@ impl MacroProvider for Rc<LuaMacroProvider> {
         id: &str,
         compilation_data: &mut compiler::CompilationData,
         macro_invocation: compiler::MacroInvocation,
-    ) {
-        (self.deref()).handle_macro(ctx, id, compilation_data, macro_invocation);
+    ) -> Result<(), MacroInvocationError> {
+        (self.deref()).handle_macro(ctx, id, compilation_data, macro_invocation)
     }
 }
 

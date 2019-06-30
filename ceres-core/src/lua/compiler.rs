@@ -22,7 +22,8 @@ pub fn get_compile_script_luafn<'lua>(ctx: LuaContext<'lua>) -> LuaFunction<'lua
 
             let mut compiler = compiler::ScriptCompiler::new(ctx, module_provider, macro_provider);
 
-            compiler.add_module("main");
+            compiler.set_map_script(map_script.to_str().unwrap().into());
+            compiler.add_module("main").map_err(|err| LuaError::external(err))?;
 
             Ok(compiler.emit_script())
         })

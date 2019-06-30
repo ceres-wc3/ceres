@@ -2,7 +2,7 @@ use clap::clap_app;
 
 use ceres_core::error::AnyError;
 
-fn main() -> Result<(), AnyError> {
+fn main() {
     let matches = clap_app!(Ceres =>
         (version: "0.1.2")
         (author: "mori <mori@reu.moe>")
