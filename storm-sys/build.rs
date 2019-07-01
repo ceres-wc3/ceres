@@ -34,7 +34,7 @@ fn make_bindings() {
         .whitelist_var("ERROR.*")
         .whitelist_var("MPQ.*")
         .whitelist_var("SFILE.*")
-        .default_enum_style(bindgen::EnumVariation::Rust)
+        .default_enum_style(bindgen::EnumVariation::Rust {non_exhaustive: false})
         .generate()
         .expect("Unable to generate bindings");
 

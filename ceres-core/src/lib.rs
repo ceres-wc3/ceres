@@ -81,9 +81,8 @@ pub fn run_build_script(
         } else {
             println!("[ERROR] An unknown error in Ceres occured:\n{:?}", cause);
         }
-    } else if let Err(err) = result {
+    } else if let Err(err) = &result {
         println!("[ERROR] A Lua error occured in the build script:\n{}", err);
-        std::process::exit(1);
     }
 
     if let Err(_) = result {
