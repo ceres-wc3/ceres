@@ -62,10 +62,11 @@ pub enum CompilerError {
     ModuleNotFound { module_name: String },
     #[error(display = "Could not parse file:\n{}", error)]
     ParserFailed { error: PestError<lua::Rule> },
-    #[error(display = "Could not compile module {}:\n{}", module_name, error)]
+    #[error(display = "Could not compile module [{}] ({:?}):\n{}", module_name, module_path, error)]
     ModuleError {
         module_name: String,
-        error:       Box<FileCompilationError>,
+        module_path: PathBuf,
+        error:       Box<CompilerError>,
     },
     #[error(display = "Cyclical dependency found involving module {}", module_name)]
     CyclicalDependency { module_name: String },

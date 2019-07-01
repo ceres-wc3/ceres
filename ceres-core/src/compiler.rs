@@ -219,10 +219,8 @@ impl<'lua, MO: ModuleProvider, MA: MacroProvider> ScriptCompiler<'lua, MO, MA> {
                 _ => {
                     return Err(CompilerError::ModuleError {
                         module_name: module_name.into(),
-                        error:       Box::new(FileCompilationError::new(
-                            self.module_provider.module_path(module_name).unwrap(),
-                            error,
-                        )),
+                        module_path: self.module_provider.module_path(module_name).unwrap(),
+                        error:       Box::new(error),
                     })
                 }
             }
