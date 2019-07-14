@@ -11,7 +11,6 @@ use rlua::prelude::*;
 use std::fs;
 use std::path::PathBuf;
 use std::rc::Rc;
-use std::sync::Arc;
 
 use crate::error::AnyError;
 use crate::error::CompilerError;

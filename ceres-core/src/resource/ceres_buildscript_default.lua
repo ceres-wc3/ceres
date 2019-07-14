@@ -25,10 +25,10 @@ local arg = {
 }
 
 local manifest = {
-    mapsDirectory = "maps/",
-    srcDirectory = "src/",
-    libDirectory = "lib/",
-    targetDirectory = "target/"
+    mapsDirectory = "./maps/",
+    srcDirectory = "./src/",
+    libDirectory = "./lib/",
+    targetDirectory = "./target/"
 }
 
 if ceres.isManifestRequested() then
@@ -111,7 +111,11 @@ local function writeBuildArtifact(script, map, writeAsMpq, targetDirectory)
     else
         if map == nil then
             print("Writing out script file to (" .. (targetDirectory .. "war3map.lua") .. ")...")
-            fs.writeFile(targetDirectory .. "war3map.lua", script)
+            local success, err = fs.writeFile(targetDirectory .. "war3map.lua", script)
+            if not success then
+                print("Error writing to file: " .. err)
+                return
+            end
         else
             artifactPath = targetDirectory .. "folder." .. map:getBaseName()
             print("Writing out map folder to (" .. artifactPath .. ") ...")
@@ -145,6 +149,6 @@ end
 
 local artifactPath = writeBuildArtifact(script, activeMap, mpqEnabled, manifest.targetDirectory)
 
-if ceres.isRunmapRequested() then
+if artifactPath ~= nil and ceres.isRunmapRequested() then
     ceres.runMap(artifactPath)
 end

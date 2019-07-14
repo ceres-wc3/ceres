@@ -5,7 +5,6 @@ use rlua::prelude::LuaError;
 use std::path::Path;
 use std::path::PathBuf;
 use std::error::Error;
-use std::sync::Arc;
 
 use ceres_parsers::lua;
 

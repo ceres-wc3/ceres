@@ -9,7 +9,6 @@ use std::ops::Deref;
 use crate::compiler;
 
 use crate::lua::util::evaluate_macro_args;
-use crate::lua::util::value_to_string;
 use crate::error::*;
 
 use compiler::MacroProvider;

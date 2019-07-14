@@ -3,7 +3,6 @@ use err_derive::Error;
 
 use std::path::PathBuf;
 
-use crate::error::AnyError;
 use crate::error::IoError;
 use crate::error::ContextError;
 

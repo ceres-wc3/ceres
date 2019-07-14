@@ -94,15 +94,6 @@ fn run(matches: clap::ArgMatches) -> Result<(), AnyError> {
         }
 
         prnt(a, 0);
-    } else if let Some(arg) = matches.subcommand_matches("mpqtest") {
-        // use ceres_mpq as mpq;
-
-        // let filename = arg.value_of("FILE").unwrap();
-        // dbg!(filename);
-
-        // let archive = mpq::MPQArchive::open(filename)?;
-        // let file = archive.open_file("(listfile)")?;
-        // println!("{}", String::from_utf8_lossy(&file.read_contents()?))
     }
 
     Ok(())

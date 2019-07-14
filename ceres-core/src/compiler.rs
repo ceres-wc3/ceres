@@ -1,5 +1,4 @@
 use std::path::PathBuf;
-use std::path::Path;
 use std::path::Component;
 use std::collections::HashMap;
 use std::collections::HashSet;
@@ -8,7 +7,6 @@ use std::fs;
 use pest::iterators::Pair;
 use pest::Parser;
 use rlua::prelude::*;
-use err_derive::Error;
 use indexmap::IndexMap;
 use walkdir::WalkDir;
 use itertools::Itertools;
@@ -274,7 +272,7 @@ impl<'lua, MO: ModuleProvider, MA: MacroProvider> ScriptCompiler<'lua, MO, MA> {
                             error:      Box::new(err),
                             diagnostic: pest::error::Error::new_from_span(
                                 pest::error::ErrorVariant::CustomError {
-                                    message: "here".into(),
+                                    message: "".into(),
                                 },
                                 pair.as_span(),
                             ),
