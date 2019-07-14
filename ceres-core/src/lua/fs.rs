@@ -1,5 +1,6 @@
 use rlua::prelude::*;
 use err_derive::Error;
+use path_absolutize::Absolutize;
 
 use std::path::PathBuf;
 
@@ -41,10 +42,11 @@ fn verify_base_path(path: &PathBuf, base_path: &PathBuf) -> Result<(), PathValid
 fn validate_path(path: &str) -> Result<PathBuf, PathValidationError> {
     let path = PathBuf::from(&path);
 
-    path.canonicalize()
-        .map_err(|err| PathValidationError::PathCanonicalizationFailed {
+    path.absolutize().map_err(|err| {
+        dbg!(PathValidationError::PathCanonicalizationFailed {
             cause: IoError::new(path, err),
         })
+    })
 }
 
 pub fn get_fs_module(ctx: LuaContext, base_path: PathBuf) -> LuaTable {
@@ -65,7 +67,8 @@ pub fn get_fs_module(ctx: LuaContext, base_path: PathBuf) -> LuaTable {
                             Ok(path)
                         })
                         .and_then(|path| {
-                            fs::write(&path, content.as_bytes())
+                            fs::create_dir_all(path.parent().unwrap())
+                                .and_then(|()| fs::write(&path, content.as_bytes()))
                                 .map_err(|err| {
                                     ContextError::new(
                                         "Failed to write file",
@@ -77,12 +80,7 @@ pub fn get_fs_module(ctx: LuaContext, base_path: PathBuf) -> LuaTable {
 
                     match result {
                         Ok(()) => return Ok((true, LuaValue::Nil)),
-                        Err(err) => {
-                            return Ok((
-                                false,
-                                LuaValue::String(ctx.create_string(&err)?),
-                            ))
-                        }
+                        Err(err) => return Ok((false, LuaValue::String(ctx.create_string(&err)?))),
                     }
                 },
             )
@@ -113,10 +111,7 @@ pub fn get_fs_module(ctx: LuaContext, base_path: PathBuf) -> LuaTable {
 
                 match result {
                     Ok(s) => Ok((LuaValue::String(s), LuaValue::Nil)),
-                    Err(err) => Ok((
-                        LuaValue::Nil,
-                        LuaValue::String(ctx.create_string(&err)?),
-                    )),
+                    Err(err) => Ok((LuaValue::Nil, LuaValue::String(ctx.create_string(&err)?))),
                 }
             })
             .unwrap();

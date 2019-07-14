@@ -8,5 +8,5 @@ build = "build.rs"
 [dependencies]
 
 [build-dependencies]
-bindgen = "0.49.2"
+bindgen = "0.50.0"
 cc = { version = "1.0.37", features = ["parallel"] }
