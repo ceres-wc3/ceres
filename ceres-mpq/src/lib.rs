@@ -2,6 +2,9 @@
 
 use std::ffi::{c_void, CString};
 use std::ptr;
+use std::mem::MaybeUninit;
+use std::marker::PhantomData;
+use std::io::Write;
 
 use num_derive::FromPrimitive;
 use num_traits::FromPrimitive;
@@ -9,6 +12,11 @@ use num_traits::FromPrimitive;
 use failure::Fail;
 
 use storm_sys as storm;
+
+const ASTERISK: &[u8] = b"*";
+
+#[cfg(test)]
+mod test;
 
 #[derive(FromPrimitive, Clone, Copy, Debug)]
 pub enum GenericErrorCode {
@@ -98,43 +106,63 @@ pub struct MPQArchive {
     handle: storm::HANDLE,
 }
 
-pub struct MPQFile {
+pub struct MPQFile<'mpq> {
     handle: storm::HANDLE,
+
+    _marker: PhantomData<&'mpq MPQArchive>,
+}
+
+pub struct MPQFileIterator<'mpq> {
+    archive:       &'mpq MPQArchive,
+    search_handle: Option<storm::HANDLE>,
+    exhausted:     bool,
 }
 
 impl MPQArchive {
-    pub fn open(path: &str) -> Result<MPQArchive, GenericError> {
-        let path = CString::new("flat-file://".to_string() + path).unwrap();
+    pub fn open<P: AsRef<[u8]>>(path: P) -> Result<MPQArchive, GenericError> {
+        const PREFIX: &'static [u8] = b"flat-file://";
+        let path = path.as_ref();
+        let mut path_buf = Vec::with_capacity(path.len() + PREFIX.len());
+        path_buf.write(PREFIX).unwrap();
+        path_buf.write(path).unwrap();
+
+        let path = CString::new(path_buf).unwrap();
         let path_ptr = path.as_ptr();
-        let mut handle = ptr::null_mut();
+        let mut handle: MaybeUninit<storm::HANDLE> = MaybeUninit::uninit();
 
         unsafe {
-            storm::SFileOpenArchive(path_ptr, 0, 0, &mut handle);
+            storm::SFileOpenArchive(path_ptr, 0, 0, handle.as_mut_ptr());
         }
 
         test_for_generic_error()?;
 
-        Ok(MPQArchive { handle })
+        Ok(MPQArchive {
+            handle: unsafe { handle.assume_init() },
+        })
     }
 
-    pub fn open_file(&self, file_name: &str) -> Result<MPQFile, GenericError> {
-        let file_name = CString::new(file_name).unwrap();
+    pub fn open_file<'mpq, P: Into<Vec<u8>>>(&'mpq self, file_name: P) -> Result<MPQFile<'mpq>, GenericError> {
+        let file_name = CString::new(file_name.into()).unwrap();
         let file_name_ptr = file_name.as_ptr();
-        let mut handle = ptr::null_mut();
+        let mut handle: MaybeUninit<storm::HANDLE> = MaybeUninit::uninit();
 
         unsafe {
-            storm::SFileOpenFileEx(self.handle, file_name_ptr, 0, &mut handle);
+            storm::SFileOpenFileEx(self.handle, file_name_ptr, 0, handle.as_mut_ptr());
         }
 
         test_for_generic_error()?;
 
-        Ok(MPQFile { handle })
+        Ok(MPQFile {
+            _marker: PhantomData,
+            handle:  unsafe { handle.assume_init() },
+        })
     }
 
-    pub fn write_file(&self, file_name: &str, data: &[u8]) -> Result<(), GenericError> {
+    pub fn write_file<P: Into<Vec<u8>>, D: AsRef<[u8]>>(&self, file_name: P, data: D) -> Result<(), GenericError> {
         let file_name = CString::new(file_name).unwrap();
         let file_name_ptr = file_name.as_ptr();
-        let mut handle = ptr::null_mut();
+        let data = data.as_ref();
+        let mut handle: MaybeUninit<storm::HANDLE> = MaybeUninit::uninit();
 
         unsafe {
             if !storm::SFileCreateFile(
@@ -144,11 +172,13 @@ impl MPQArchive {
                 data.len() as u32,
                 0,
                 storm::MPQ_FILE_REPLACEEXISTING,
-                &mut handle,
+                handle.as_mut_ptr(),
             ) {
                 test_for_generic_error()?;
             }
         }
+
+        let handle = unsafe { handle.assume_init() };
 
         unsafe {
             if !storm::SFileWriteFile(handle, data.as_ptr() as *const c_void, data.len() as u32, 0)
@@ -165,6 +195,14 @@ impl MPQArchive {
 
         Ok(())
     }
+
+    pub fn iter_files(&self) -> Result<MPQFileIterator, GenericError> {
+        Ok(MPQFileIterator {
+            archive:       self,
+            search_handle: None,
+            exhausted:     false,
+        })
+    }
 }
 
 impl Drop for MPQArchive {
@@ -175,7 +213,7 @@ impl Drop for MPQArchive {
     }
 }
 
-impl MPQFile {
+impl<'mpq> MPQFile<'mpq> {
     pub fn get_size(&self) -> Result<u32, GenericError> {
         let mut file_size_high = 0;
 
@@ -210,10 +248,104 @@ impl MPQFile {
     }
 }
 
-impl Drop for MPQFile {
+impl<'mpq> Drop for MPQFile<'mpq> {
     fn drop(&mut self) {
         unsafe {
             storm::SFileCloseFile(self.handle);
+        }
+    }
+}
+
+impl<'mpq> MPQFileIterator<'mpq> {
+    fn start_search(&mut self) -> Result<storm::SFILE_FIND_DATA, GenericError> {
+        let mut file_info: MaybeUninit<storm::SFILE_FIND_DATA> = MaybeUninit::uninit();
+
+        let handle = unsafe {
+            storm::SFileFindFirstFile(
+                self.archive.handle,
+                ASTERISK.as_ptr() as *const i8,
+                file_info.as_mut_ptr(),
+                ptr::null(),
+            )
+        };
+
+        if handle.is_null() {
+            test_for_generic_error()?;
+        }
+
+        self.search_handle = Some(handle);
+        let file_info = unsafe { file_info.assume_init() };
+
+        Ok(file_info)
+    }
+
+    fn continue_search(&mut self) -> Result<storm::SFILE_FIND_DATA, GenericError> {
+        let mut file_info: MaybeUninit<storm::SFILE_FIND_DATA> = MaybeUninit::uninit();
+
+        let success = unsafe {
+            storm::SFileFindNextFile(self.search_handle.unwrap(), file_info.as_mut_ptr())
+        };
+
+        if !success {
+            test_for_generic_error()?;
+        }
+
+        let file_info = unsafe { file_info.assume_init() };
+
+        Ok(file_info)
+    }
+}
+
+impl<'mpq> Iterator for MPQFileIterator<'mpq> {
+    type Item = MPQFile<'mpq>;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        if self.exhausted {
+            return None;
+        }
+
+        let result = if self.search_handle.is_none() {
+            self.start_search()
+        } else {
+            self.continue_search()
+        };
+
+        if result.is_err() {
+            self.exhausted = true;
+            None
+        } else {
+            let file_info = result.unwrap();
+            let file_name = file_info.cFileName;
+            let mut handle: MaybeUninit<storm::HANDLE> = MaybeUninit::uninit();
+
+            unsafe {
+                storm::SFileOpenFileEx(
+                    self.archive.handle,
+                    file_name.as_ptr(),
+                    0,
+                    handle.as_mut_ptr(),
+                );
+            }
+
+            if test_for_generic_error().is_err() {
+                self.exhausted = true;
+                None
+            } else {
+                Some(MPQFile {
+                    _marker: PhantomData,
+                    handle:  unsafe { handle.assume_init() },
+                })
+            }
+        }
+    }
+}
+
+impl<'mpq> Drop for MPQFileIterator<'mpq> {
+    fn drop(&mut self) {
+        unsafe {
+            if let Some(handle) = self.search_handle {
+                storm::SFileFindClose(handle);
+            }
         }
     }
 }

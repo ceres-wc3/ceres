@@ -9,3 +9,6 @@ num-derive = "0.2.5"
 num-traits = "0.2.8"
 storm-sys = {path = "../storm-sys"}
 failure = "0.1.5"
+
+[dev-dependencies]
+tempfile = "3"
