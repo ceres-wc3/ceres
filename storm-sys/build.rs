@@ -19,33 +19,31 @@ fn find_source_files<P: AsRef<Path>>(path: P) -> impl Iterator<Item = PathBuf> {
         .map(|entry| entry.path())
 }
 
-fn make_bindings() {
-    let target_dir = PathBuf::from(env::var("OUT_DIR").unwrap());
+// fn make_bindings() {
+//     let target_dir = PathBuf::from(env::var("OUT_DIR").unwrap());
 
-    let bindings = bindgen::Builder::default()
-        .header("StormLib.h")
-        .clang_arg("-x")
-        .clang_arg("c++")
-        .layout_tests(true)
-        .whitelist_function("SFile.*")
-        .whitelist_function("SList.*")
-        .whitelist_function("GetLastError")
-        .whitelist_type("T.*")
-        .whitelist_var("ERROR.*")
-        .whitelist_var("MPQ.*")
-        .whitelist_var("SFILE.*")
-        .default_enum_style(bindgen::EnumVariation::Rust {non_exhaustive: false})
-        .generate()
-        .expect("Unable to generate bindings");
+//     let bindings = bindgen::Builder::default()
+//         .header("StormLib.h")
+//         .clang_arg("-x")
+//         .clang_arg("c++")
+//         .layout_tests(true)
+//         .whitelist_function("SFile.*")
+//         .whitelist_function("SList.*")
+//         .whitelist_function("GetLastError")
+//         .whitelist_type("T.*")
+//         .whitelist_var("ERROR.*")
+//         .whitelist_var("MPQ.*")
+//         .whitelist_var("SFILE.*")
+//         .default_enum_style(bindgen::EnumVariation::Rust {non_exhaustive: false})
+//         .generate()
+//         .expect("Unable to generate bindings");
 
-    bindings
-        .write_to_file(target_dir.join("src/storm.rs"))
-        .expect("Couldn't write bindings!");
-}
+//     bindings
+//         .write_to_file(target_dir.join("src/storm.rs"))
+//         .expect("Couldn't write bindings!");
+// }
 
 fn main() {
-    let target_dir = PathBuf::from(env::var("OUT_DIR").unwrap());
-    let manifest_dir = PathBuf::from(env::var("CARGO_MANIFEST_DIR").unwrap());
     let target_triple = env::var("TARGET").unwrap();
 
     let mut build = cc::Build::new();

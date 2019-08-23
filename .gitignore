@@ -1,12 +1,13 @@
-.luacheckrc
-.idea/
-target/
-Cargo.lock
-output.log
+/*
 
-.vscode/
-
-# storm-sys/
-# ceres-mpq/
-
-**.log
+*.log
+!/ceres-binaries
+!/ceres-core
+!/ceres-mpq
+!/ceres-parsers
+!/ci
+!/storm-sys
+!Cargo.lock
+!Cargo.toml
+!rustfmt.toml
+!README.md

@@ -25,10 +25,10 @@ local arg = {
 }
 
 local manifest = {
-    mapsDirectory = "./maps/",
-    srcDirectory = "./src/",
-    libDirectory = "./lib/",
-    targetDirectory = "./target/"
+    mapsDirectory = "maps/",
+    srcDirectory = "src/",
+    libDirectory = "lib/",
+    targetDirectory = "target/"
 }
 
 if ceres.isManifestRequested() then
