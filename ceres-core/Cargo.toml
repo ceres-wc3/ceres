@@ -16,5 +16,6 @@ err-derive = "0.1.5"
 walkdir = "2.2.8"
 itertools = "0.8.0"
 path-absolutize = "1.1.5"
+ceres-mpq = "0.1.2"
 
 ceres-parsers = {path = "../ceres-parsers"}

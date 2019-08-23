@@ -75,7 +75,7 @@ impl ModuleProvider for ProjectModuleProvider {
     }
 
     fn module_path(&self, module_name: &str) -> Option<PathBuf> {
-        self.known_modules.get(module_name).map(|s| s.clone())
+        self.known_modules.get(module_name).cloned()
     }
 }
 

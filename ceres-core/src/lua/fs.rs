@@ -79,8 +79,8 @@ pub fn get_fs_module(ctx: LuaContext, base_path: PathBuf) -> LuaTable {
                         });
 
                     match result {
-                        Ok(()) => return Ok((true, LuaValue::Nil)),
-                        Err(err) => return Ok((false, LuaValue::String(ctx.create_string(&err)?))),
+                        Ok(()) => Ok((true, LuaValue::Nil)),
+                        Err(err) => Ok((false, LuaValue::String(ctx.create_string(&err)?)))
                     }
                 },
             )

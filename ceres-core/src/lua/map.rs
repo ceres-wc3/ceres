@@ -9,8 +9,6 @@ use std::path::{PathBuf, Path};
 use std::fs;
 use std::collections::HashMap;
 
-use ceres_mpq as mpq;
-
 const BLANK_MAP_FILE: &[u8] = include_bytes!("../resource/blank.w3x");
 
 #[derive(Error, Debug)]
@@ -19,8 +17,8 @@ pub enum MapError {
     Io { cause: IoError },
     #[error(display = "Not implemented: {}", message)]
     NotImplemented { message: String },
-    #[error(display = "MPQ Operation Failed: {}", cause)]
-    MpqError { cause: mpq::MpqError },
+    // #[error(display = "MPQ Operation Failed: {}", cause)]
+    // MpqError { cause: mpq::MpqError },
     #[error(display = "Map file path is malformed")]
     MalformedFilePath,
 }
@@ -43,15 +41,9 @@ impl From<MapError> for LuaError {
     }
 }
 
-impl From<mpq::MpqError> for MapError {
-    fn from(err: mpq::MpqError) -> MapError {
-        MapError::MpqError { cause: err }
-    }
-}
-
 pub struct DirMap {
     root:  PathBuf,
-    cache: HashMap<mpq::MPQPath, Vec<u8>>,
+    cache: HashMap<String, Vec<u8>>,
 }
 
 impl DirMap {
@@ -63,39 +55,35 @@ impl DirMap {
     }
 
     fn read_file(&self, path: &str) -> Option<Vec<u8>> {
-        let mpq_path = mpq::MPQPath::from_buf(&path)?;
-
-        if self.cache.contains_key(&mpq_path) {
-            return self.cache.get(&mpq_path).map(|s| s.clone());
+        if self.cache.contains_key(path) {
+            return self.cache.get(path).cloned();
         }
 
         fs::read(self.root.join(path)).ok()
     }
 
     fn write_file(&mut self, path: &str, data: &[u8]) -> Result<(), MapError> {
-        let mpq_path = mpq::MPQPath::from_buf(path).ok_or(MapError::MalformedFilePath)?;
-
-        self.cache.insert(mpq_path, data.into());
+        self.cache.insert(path.into(), data.into());
         Ok(())
     }
 
     fn save_to_mpq<P: AsRef<Path>>(&self, path: P) -> Result<(), MapError> {
-        let path = path.as_ref().to_str().unwrap();
-        fs::write(path, BLANK_MAP_FILE).map_err(|err| IoError::new(path, err))?;
-        let mpq_archive = mpq::MPQArchive::open(path).unwrap();
+        // let path = path.as_ref().to_str().unwrap();
+        // fs::write(path, BLANK_MAP_FILE).map_err(|err| IoError::new(path, err))?;
+        // let mpq_archive = mpq::MPQArchive::open(path).unwrap();
 
-        for (path, data) in &self.cache {
-            mpq_archive.write_file(path, data)?;
-        }
+        // for (path, data) in &self.cache {
+        //     mpq_archive.write_file(path, data)?;
+        // }
 
-        for file_name in self.get_files() {
-            let mpq_path = mpq::MPQPath::from_buf(&file_name).ok_or(MapError::MalformedFilePath)?;
+        // for file_name in self.get_files() {
+        //     let mpq_path = String::from_buf(&file_name).ok_or(MapError::MalformedFilePath)?;
 
-            if !self.cache.contains_key(&mpq_path) {
-                let data = fs::read(self.root.join(&file_name)).unwrap();
-                mpq_archive.write_file(&mpq_path, data).unwrap()
-            }
-        }
+        //     if !self.cache.contains_key(&mpq_path) {
+        //         let data = fs::read(self.root.join(&file_name)).unwrap();
+        //         mpq_archive.write_file(&mpq_path, data).unwrap()
+        //     }
+        // }
 
         Ok(())
     }
@@ -152,66 +140,66 @@ impl LuaUserData for DirMap {
     }
 }
 
-pub struct MpqMap {
-    path: PathBuf,
-    archive: mpq::MPQArchive,
-    cache:   HashMap<mpq::MPQPath, Vec<u8>>,
-}
+// pub struct MpqMap {
+//     path: PathBuf,
+//     archive: mpq::MPQArchive,
+//     cache:   HashMap<String, Vec<u8>>,
+// }
 
-impl MpqMap {
-    pub fn new<P: AsRef<Path>>(path: P) -> Result<MpqMap, MapError> {
-        let archive = mpq::MPQArchive::open(&path)?;
+// impl MpqMap {
+//     pub fn new<P: AsRef<Path>>(path: P) -> Result<MpqMap, MapError> {
+//         let archive = mpq::MPQArchive::open(&path)?;
 
-        Ok(MpqMap {
-            path: path.as_ref().into(),
-            archive,
-            cache: Default::default(),
-        })
-    }
+//         Ok(MpqMap {
+//             path: path.as_ref().into(),
+//             archive,
+//             cache: Default::default(),
+//         })
+//     }
 
-    fn read_file(&self, path: &str) -> Option<Vec<u8>> {
-        let mpq_path = mpq::MPQPath::from_buf(&path)?;
+//     fn read_file(&self, path: &str) -> Option<Vec<u8>> {
+//         let mpq_path = String::from_buf(&path)?;
 
-        if self.cache.contains_key(&mpq_path) {
-            self.cache.get(&mpq_path).map(|s| s.clone())
-        } else {
-            let file = self.archive.open_file(&mpq_path).ok()?;
-            let data = file.read_contents().ok()?;
+//         if self.cache.contains_key(&mpq_path) {
+//             self.cache.get(&mpq_path).map(|s| s.clone())
+//         } else {
+//             let file = self.archive.open_file(&mpq_path).ok()?;
+//             let data = file.read_contents().ok()?;
 
-            Some(data)
-        }
-    }
+//             Some(data)
+//         }
+//     }
 
-    fn write_file(&mut self, path: &str, data: &[u8]) -> Result<(), MapError> {
-        let mpq_path = mpq::MPQPath::from_buf(path).ok_or(MapError::MalformedFilePath)?;
+//     fn write_file(&mut self, path: &str, data: &[u8]) -> Result<(), MapError> {
+//         let mpq_path = String::from_buf(path).ok_or(MapError::MalformedFilePath)?;
 
-        self.cache.insert(mpq_path, data.into());
-        Ok(())
-    }
+//         self.cache.insert(mpq_path, data.into());
+//         Ok(())
+//     }
 
-    fn save_to_mpq<P: AsRef<Path>>(&self, path: P) -> Result<(), MapError> {
-        fs::copy(&self.path, &path).map_err(|err| IoError::new(&path, err))?;
-        let mpq_archive = mpq::MPQArchive::open(&path)?;
+//     fn save_to_mpq<P: AsRef<Path>>(&self, path: P) -> Result<(), MapError> {
+//         fs::copy(&self.path, &path).map_err(|err| IoError::new(&path, err))?;
+//         let mpq_archive = mpq::MPQArchive::open(&path)?;
 
-        for (path, data) in &self.cache {
-            mpq_archive.write_file(path, data)?;
-        }
+//         for (path, data) in &self.cache {
+//             mpq_archive.write_file(path, data)?;
+//         }
 
-        Ok(())
-    }
+//         Ok(())
+//     }
 
-    fn save_to_dir<P: AsRef<Path>>(&self, path: P) -> Result<(), MapError> {
-        unimplemented!()
-    }
+//     fn save_to_dir<P: AsRef<Path>>(&self, path: P) -> Result<(), MapError> {
+//         unimplemented!()
+//     }
 
-    fn get_files(&self) -> Vec<String> {
-        unimplemented!()
-    }
+//     fn get_files(&self) -> Vec<String> {
+//         unimplemented!()
+//     }
 
-    fn validate(&self) -> Result<(), MapError> {
-        unimplemented!()
-    }
-}
+//     fn validate(&self) -> Result<(), MapError> {
+//         unimplemented!()
+//     }
+// }
 
 fn load_map_internal(
     ctx: LuaContext,

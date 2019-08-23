@@ -92,7 +92,7 @@ pub fn get_threadlocal_macro_provider() -> Rc<LuaMacroProvider> {
 }
 
 pub fn get_register_luafn(ctx: LuaContext) -> LuaFunction {
-    let func = ctx
+    ctx
         .create_function::<_, (), _>(|ctx, (id, callback): (String, LuaFunction)| {
             let lua_macro_provider = get_threadlocal_macro_provider();
 
@@ -100,7 +100,5 @@ pub fn get_register_luafn(ctx: LuaContext) -> LuaFunction {
 
             Ok(())
         })
-        .unwrap();
-
-    func
+        .unwrap()
 }

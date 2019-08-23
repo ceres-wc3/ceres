@@ -3,8 +3,8 @@ use rlua::prelude::*;
 use crate::compiler;
 use crate::lua::macros;
 
-pub fn get_compile_script_luafn<'lua>(ctx: LuaContext<'lua>) -> LuaFunction<'lua> {
-    let func = ctx
+pub fn get_compile_script_luafn(ctx: LuaContext) -> LuaFunction {
+    ctx
         .create_function::<LuaTable, String, _>(|ctx, args: LuaTable| {
             let src_directory: LuaString = args.get("srcDirectory").unwrap();
             let lib_directory: LuaString = args.get("libDirectory").unwrap();
@@ -23,11 +23,9 @@ pub fn get_compile_script_luafn<'lua>(ctx: LuaContext<'lua>) -> LuaFunction<'lua
             let mut compiler = compiler::ScriptCompiler::new(ctx, module_provider, macro_provider);
 
             compiler.set_map_script(map_script.to_str().unwrap().into());
-            compiler.add_module("main").map_err(|err| LuaError::external(err))?;
+            compiler.add_module("main").map_err(LuaError::external)?;
 
             Ok(compiler.emit_script())
         })
-        .unwrap();
-
-    func
+        .unwrap()
 }

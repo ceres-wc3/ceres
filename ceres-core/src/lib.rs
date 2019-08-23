@@ -1,5 +1,7 @@
 #![allow(dead_code)]
 
+extern crate ceres_mpq as mpq;
+
 pub mod lua;
 
 // mod config;
