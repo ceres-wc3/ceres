@@ -271,9 +271,7 @@ impl<'lua, MO: ModuleProvider, MA: MacroProvider> ScriptCompiler<'lua, MO, MA> {
                         _ => CompilerError::MacroError {
                             error:      Box::new(err),
                             diagnostic: pest::error::Error::new_from_span(
-                                pest::error::ErrorVariant::CustomError {
-                                    message: "".into(),
-                                },
+                                pest::error::ErrorVariant::CustomError { message: "".into() },
                                 pair.as_span(),
                             ),
                         },
@@ -327,7 +325,9 @@ impl<'lua, MO: ModuleProvider, MA: MacroProvider> ScriptCompiler<'lua, MO, MA> {
         let args = evaluate_macro_args(self.ctx, macro_invocation.args)?.into_vec();
 
         if args.is_empty() {
-            return Err(MacroInvocationError::message("Require macro requires at least one argument".into()));
+            return Err(MacroInvocationError::message(
+                "Require macro requires at least one argument".into(),
+            ));
         }
 
         if let LuaValue::String(module_name) = &args[0] {
@@ -335,7 +335,9 @@ impl<'lua, MO: ModuleProvider, MA: MacroProvider> ScriptCompiler<'lua, MO, MA> {
             compilation_data.src += &format!("require(\"{}\")", module_name);
             self.add_module(module_name)?;
         } else {
-            return Err(MacroInvocationError::message("Require macro's first argument must be a string".into()));
+            return Err(MacroInvocationError::message(
+                "Require macro's first argument must be a string".into(),
+            ));
         }
 
         Ok(())
@@ -351,7 +353,9 @@ impl<'lua, MO: ModuleProvider, MA: MacroProvider> ScriptCompiler<'lua, MO, MA> {
             .into_vec();
 
         if args.len() > 1 || args.is_empty() {
-            return Err(MacroInvocationError::message("Compiletime macro must have exactly one argument".into()));
+            return Err(MacroInvocationError::message(
+                "Compiletime macro must have exactly one argument".into(),
+            ));
         }
 
         let arg = args.remove(0);

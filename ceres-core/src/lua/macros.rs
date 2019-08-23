@@ -21,7 +21,9 @@ impl LuaMacroProvider {
     fn register_macro<'lua>(&self, ctx: LuaContext<'lua>, id: &str, func: LuaFunction<'lua>) {
         let registry_key = ctx.create_registry_value(func).unwrap();
 
-        self.registered_macros.borrow_mut().insert(id.into(), registry_key);
+        self.registered_macros
+            .borrow_mut()
+            .insert(id.into(), registry_key);
     }
 }
 
@@ -92,13 +94,12 @@ pub fn get_threadlocal_macro_provider() -> Rc<LuaMacroProvider> {
 }
 
 pub fn get_register_luafn(ctx: LuaContext) -> LuaFunction {
-    ctx
-        .create_function::<_, (), _>(|ctx, (id, callback): (String, LuaFunction)| {
-            let lua_macro_provider = get_threadlocal_macro_provider();
+    ctx.create_function::<_, (), _>(|ctx, (id, callback): (String, LuaFunction)| {
+        let lua_macro_provider = get_threadlocal_macro_provider();
 
-            lua_macro_provider.register_macro(ctx, &id, callback);
+        lua_macro_provider.register_macro(ctx, &id, callback);
 
-            Ok(())
-        })
-        .unwrap()
+        Ok(())
+    })
+    .unwrap()
 }
