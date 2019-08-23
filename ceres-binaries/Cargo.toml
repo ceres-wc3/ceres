@@ -5,7 +5,6 @@ authors = ["mori"]
 edition = "2018"
 
 [dependencies]
-ceres-mpq = {path = "../ceres-mpq"}
 ceres-parsers = {path = "../ceres-parsers"}
 ceres-core = {path = "../ceres-core"}
 
