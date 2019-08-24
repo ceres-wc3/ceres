@@ -7,7 +7,6 @@ use path_absolutize::Absolutize;
 
 use crate::error::AnyError;
 use crate::error::IoError;
-use crate::error::ContextError;
 
 #[derive(Error, Debug)]
 pub enum LuaFileError {
@@ -15,6 +14,8 @@ pub enum LuaFileError {
     PathCanonicalizationFailed { cause: IoError },
     #[error(display = "Invalid path")]
     InvalidPath,
+    #[error(display = "Not a directory")]
+    NotADir,
 }
 
 impl From<LuaFileError> for LuaError {
@@ -50,46 +51,74 @@ fn lua_read_file<'lua>(ctx: LuaContext<'lua>, path: &str) -> Result<LuaString<'l
     Ok(ctx.create_string(&content).unwrap())
 }
 
+fn lua_read_dir<'lua>(ctx: LuaContext<'lua>, path: &str) -> Result<LuaTable<'lua>, AnyError> {
+    let path = validate_path(&path)?;
+
+    if !path.is_dir() {
+        return Err(Box::new(LuaFileError::NotADir))
+    }
+
+    let entries = fs::read_dir(path)?
+        .filter_map(|s| s.ok())
+        .filter_map(|s| s.path().to_str().map(|s| s.to_string()))
+        .map(|s| ctx.create_string(&s).unwrap());
+
+    Ok(ctx.create_sequence_from(entries).unwrap())
+}
+
+fn get_writefile_luafn(ctx: LuaContext) -> LuaFunction {
+    ctx.create_function(
+        move |ctx: LuaContext, (path, content): (String, LuaString)| {
+            let result = lua_write_file(&path, content);
+
+            match result {
+                Ok(()) => Ok((true, LuaValue::Nil)),
+                Err(err) => Ok((
+                    false,
+                    LuaValue::String(ctx.create_string(&err.to_string())?),
+                )),
+            }
+        },
+    )
+    .unwrap()
+}
+
+fn get_readfile_luafn(ctx: LuaContext) -> LuaFunction {
+    ctx.create_function(move |ctx: LuaContext, path: (String)| {
+        let result = lua_read_file(ctx, &path);
+
+        match result {
+            Ok(s) => Ok((LuaValue::String(s), LuaValue::Nil)),
+            Err(err) => Ok((
+                LuaValue::Nil,
+                LuaValue::String(ctx.create_string(&err.to_string())?),
+            )),
+        }
+    })
+    .unwrap()
+}
+
+fn get_readdir_luafn(ctx: LuaContext) -> LuaFunction {
+     ctx.create_function(move |ctx: LuaContext, path: (String)| {
+        let result = lua_read_dir(ctx, &path);
+
+        match result {
+            Ok(s) => Ok((LuaValue::Table(s), LuaValue::Nil)),
+            Err(err) => Ok((
+                LuaValue::Nil,
+                LuaValue::String(ctx.create_string(&err.to_string())?),
+            )),
+        }
+    })
+    .unwrap()
+}
+
 pub fn get_fs_module(ctx: LuaContext) -> LuaTable {
     let table = ctx.create_table().unwrap();
 
-    {
-        let func = ctx
-            .create_function(
-                move |ctx: LuaContext, (path, content): (String, LuaString)| {
-                    let result = lua_write_file(&path, content);
-
-                    match result {
-                        Ok(()) => Ok((true, LuaValue::Nil)),
-                        Err(err) => Ok((
-                            false,
-                            LuaValue::String(ctx.create_string(&err.to_string())?),
-                        )),
-                    }
-                },
-            )
-            .unwrap();
-
-        table.set("writeFile", func).unwrap();
-    }
-
-    {
-        let func = ctx
-            .create_function(move |ctx: LuaContext, path: (String)| {
-                let result = lua_read_file(ctx, &path);
-
-                match result {
-                    Ok(s) => Ok((LuaValue::String(s), LuaValue::Nil)),
-                    Err(err) => Ok((
-                        LuaValue::Nil,
-                        LuaValue::String(ctx.create_string(&err.to_string())?),
-                    )),
-                }
-            })
-            .unwrap();
-
-        table.set("readFile", func).unwrap();
-    }
+    table.set("writeFile", get_readfile_luafn(ctx)).unwrap();
+    table.set("readFile", get_writefile_luafn(ctx)).unwrap();
+    table.set("readDir", get_readdir_luafn(ctx)).unwrap();
 
     table
 }
