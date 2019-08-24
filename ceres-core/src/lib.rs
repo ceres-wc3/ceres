@@ -54,7 +54,6 @@ pub fn run_build_script(
         ctx.scope(|_| {
             lua::setup_ceres_environ(
                 ctx,
-                project_dir,
                 run_mode,
                 manifest_port.is_some(),
                 script_args.into_iter().map(|s| s.into()).collect(),

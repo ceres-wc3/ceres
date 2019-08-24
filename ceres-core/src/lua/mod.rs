@@ -12,7 +12,6 @@ use crate::CeresRunMode;
 
 pub fn setup_ceres_environ(
     ctx: LuaContext,
-    base_path: PathBuf,
     run_mode: CeresRunMode,
     manifest_requested: bool,
     script_args: Vec<String>,
@@ -67,7 +66,7 @@ pub fn setup_ceres_environ(
         )
         .unwrap();
 
-    let fs_table = fs::get_fs_module(ctx, base_path);
+    let fs_table = fs::get_fs_module(ctx);
 
     globals.set("fs", fs_table).unwrap();
     globals.set("ceres", ceres_table).unwrap();
