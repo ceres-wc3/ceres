@@ -7,7 +7,6 @@ use mpq::Creator;
 use mpq::FileOptions;
 
 use crate::error::AnyError;
-use crate::error::IoError;
 use crate::lua::util::lua_wrap_result;
 
 type FileArchive = Archive<BufReader<fs::File>>;
@@ -18,7 +17,7 @@ struct Viewer {
 
 struct Builder {
     creator: Creator,
-    writer:  BufWriter<fs::File>,
+    header:  Option<Vec<u8>>,
 }
 
 impl LuaUserData for Viewer {
@@ -66,6 +65,18 @@ impl LuaUserData for Builder {
                 Ok(lua_wrap_result(ctx, result))
             },
         );
+
+        methods.add_method_mut("write", |ctx, obj, path: (LuaString)| {
+            let result = writeflow_write(obj, path);
+
+            Ok(lua_wrap_result(ctx, result))
+        });
+
+        methods.add_method_mut("setHeader", |ctx, obj, header: (LuaString)| {
+            let result = writeflow_setheader(obj, header.as_bytes());
+
+            Ok(lua_wrap_result(ctx, result))
+        });
     }
 }
 
@@ -119,12 +130,10 @@ fn readflow_open(path: &str) -> Result<Viewer, AnyError> {
     Ok(Viewer { archive })
 }
 
-fn writeflow_setheader(builder: &mut Builder, contents: &[u8]) -> Result<(), AnyError> {
-    let writer = &mut builder.writer;
-    writer.seek(SeekFrom::Start(0))?;
-    writer.write_all(contents)?;
+fn writeflow_setheader(builder: &mut Builder, contents: &[u8]) -> Result<bool, AnyError> {
+    builder.header = Some(contents.into());
 
-    Ok(())
+    Ok(true)
 }
 
 fn writeflow_addbuf(
@@ -155,17 +164,31 @@ fn writeflow_addfile(
     Ok(true)
 }
 
-fn writeflow_new(path: &str) -> Result<Builder, AnyError> {
+fn writeflow_write(builder: &mut Builder, path: LuaString) -> Result<bool, AnyError> {
+    let path = path.to_str()?;
     let writer = fs::OpenOptions::new()
         .write(true)
         .truncate(true)
         .create(true)
         .open(path)?;
 
-    let writer = BufWriter::new(writer);
+    let mut writer = BufWriter::new(writer);
+    if let Some(header) = &builder.header {
+        writer.write_all(&header)?;
+    }
+    let creator = &mut builder.creator;
+    creator.write(&mut writer)?;
+
+    Ok(true)
+}
+
+fn writeflow_new() -> Result<Builder, AnyError> {
     let creator = Creator::default();
 
-    Ok(Builder { creator, writer })
+    Ok(Builder {
+        creator,
+        header: None,
+    })
 }
 
 fn get_mpqopen_luafn(ctx: LuaContext) -> LuaFunction {
@@ -178,8 +201,8 @@ fn get_mpqopen_luafn(ctx: LuaContext) -> LuaFunction {
 }
 
 fn get_mpqnew_luafn(ctx: LuaContext) -> LuaFunction {
-    ctx.create_function(|ctx: LuaContext, path: (String)| {
-        let result = writeflow_new(&path);
+    ctx.create_function(|ctx: LuaContext, _: ()| {
+        let result = writeflow_new();
 
         Ok(lua_wrap_result(ctx, result))
     })
@@ -190,6 +213,7 @@ pub fn get_mpq_module(ctx: LuaContext) -> LuaTable {
     let table = ctx.create_table().unwrap();
 
     table.set("open", get_mpqopen_luafn(ctx)).unwrap();
+    table.set("new", get_mpqnew_luafn(ctx)).unwrap();
 
     table
 }
