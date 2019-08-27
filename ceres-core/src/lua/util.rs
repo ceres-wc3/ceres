@@ -1,5 +1,3 @@
-use std::error::Error;
-
 use rlua::prelude::*;
 use pest::iterators::Pair;
 use ceres_parsers::lua;

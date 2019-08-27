@@ -1,11 +1,8 @@
-pub mod map;
 pub mod util;
 pub mod compiler;
 pub mod macros;
 pub mod fs;
 pub mod mpq;
-
-use std::path::PathBuf;
 
 use rlua::prelude::*;
 
@@ -28,9 +25,6 @@ pub fn setup_ceres_environ(
         .unwrap();
     ceres_table
         .set("compileScript", compiler::get_compile_script_luafn(ctx))
-        .unwrap();
-    ceres_table
-        .set("loadMap", map::get_map_load_luafn(ctx))
         .unwrap();
 
     ceres_table
