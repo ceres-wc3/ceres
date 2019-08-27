@@ -14,7 +14,7 @@ pub fn setup_ceres_environ(
     manifest_requested: bool,
     script_args: Vec<String>,
 ) {
-    const CERES_BUILDSCRIPT_LIB: &str = include_str!("../resource/ceres_buildscript_lib.lua");
+    const CERES_BUILDSCRIPT_LIB: &str = include_str!("../resource/buildscript_lib.lua");
 
     let globals = ctx.globals();
 

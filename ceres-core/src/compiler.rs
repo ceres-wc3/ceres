@@ -145,8 +145,8 @@ impl<'lua, MO: ModuleProvider, MA: MacroProvider> ScriptCompiler<'lua, MO, MA> {
     }
 
     pub fn emit_script(&self) -> String {
-        const SCRIPT_HEADER: &str = include_str!("resource/ceres_header.lua");
-        const SCRIPT_POST: &str = include_str!("resource/ceres_post.lua");
+        const SCRIPT_HEADER: &str = include_str!("resource/map_header.lua");
+        const SCRIPT_FOOTER: &str = include_str!("resource/map_footer.lua");
 
         let mut out = String::new();
 
@@ -179,7 +179,7 @@ impl<'lua, MO: ModuleProvider, MA: MacroProvider> ScriptCompiler<'lua, MO, MA> {
             out += &module_footer_comment;
         }
 
-        out += SCRIPT_POST.trim();
+        out += SCRIPT_FOOTER.trim();
         out += "\n";
 
         out

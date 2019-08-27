@@ -42,7 +42,7 @@ pub fn run_build_script(
     script_args: Vec<&str>,
     manifest_port: Option<u16>,
 ) -> Result<(), AnyError> {
-    const DEFAULT_BUILD_SCRIPT: &str = include_str!("resource/ceres_buildscript_default.lua");
+    const DEFAULT_BUILD_SCRIPT: &str = include_str!("resource/buildscript_default.lua");
 
     let build_script_path = project_dir.join("build.lua");
     let build_script = fs::read_to_string(&build_script_path).ok();
