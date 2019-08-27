@@ -7,6 +7,7 @@ use path_absolutize::Absolutize;
 
 use crate::error::AnyError;
 use crate::error::IoError;
+use crate::lua::util::lua_wrap_result;
 
 #[derive(Error, Debug)]
 pub enum LuaFileError {
@@ -55,7 +56,7 @@ fn lua_read_dir<'lua>(ctx: LuaContext<'lua>, path: &str) -> Result<LuaTable<'lua
     let path = validate_path(&path)?;
 
     if !path.is_dir() {
-        return Err(Box::new(LuaFileError::NotADir))
+        return Err(Box::new(LuaFileError::NotADir));
     }
 
     let entries = fs::read_dir(path)?
@@ -69,46 +70,28 @@ fn lua_read_dir<'lua>(ctx: LuaContext<'lua>, path: &str) -> Result<LuaTable<'lua
 fn get_writefile_luafn(ctx: LuaContext) -> LuaFunction {
     ctx.create_function(
         move |ctx: LuaContext, (path, content): (String, LuaString)| {
-            let result = lua_write_file(&path, content);
+            let result = lua_write_file(&path, content).map(|_| true);
 
-            match result {
-                Ok(()) => Ok((true, LuaValue::Nil)),
-                Err(err) => Ok((
-                    false,
-                    LuaValue::String(ctx.create_string(&err.to_string())?),
-                )),
-            }
+            Ok(lua_wrap_result(ctx, result))
         },
     )
     .unwrap()
 }
 
 fn get_readfile_luafn(ctx: LuaContext) -> LuaFunction {
-    ctx.create_function(move |ctx: LuaContext, path: (String)| {
+    ctx.create_function(|ctx: LuaContext, path: (String)| {
         let result = lua_read_file(ctx, &path);
 
-        match result {
-            Ok(s) => Ok((LuaValue::String(s), LuaValue::Nil)),
-            Err(err) => Ok((
-                LuaValue::Nil,
-                LuaValue::String(ctx.create_string(&err.to_string())?),
-            )),
-        }
+        Ok(lua_wrap_result(ctx, result))
     })
     .unwrap()
 }
 
 fn get_readdir_luafn(ctx: LuaContext) -> LuaFunction {
-     ctx.create_function(move |ctx: LuaContext, path: (String)| {
+    ctx.create_function(|ctx: LuaContext, path: (String)| {
         let result = lua_read_dir(ctx, &path);
 
-        match result {
-            Ok(s) => Ok((LuaValue::Table(s), LuaValue::Nil)),
-            Err(err) => Ok((
-                LuaValue::Nil,
-                LuaValue::String(ctx.create_string(&err.to_string())?),
-            )),
-        }
+        Ok(lua_wrap_result(ctx, result))
     })
     .unwrap()
 }

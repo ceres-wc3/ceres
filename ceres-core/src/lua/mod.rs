@@ -3,6 +3,7 @@ pub mod util;
 pub mod compiler;
 pub mod macros;
 pub mod fs;
+pub mod mpq;
 
 use std::path::PathBuf;
 

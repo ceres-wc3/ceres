@@ -1,7 +1,10 @@
-use rlua::prelude::*;
+use std::error::Error;
 
+use rlua::prelude::*;
 use pest::iterators::Pair;
 use ceres_parsers::lua;
+
+use crate::error::AnyError;
 
 pub fn evaluate_macro_args<'lua>(
     ctx: LuaContext<'lua>,
@@ -78,4 +81,17 @@ pub fn table_to_string(table: LuaTable) -> String {
     out += "}";
 
     out
+}
+
+pub fn lua_wrap_result<'lua, V>(
+    ctx: LuaContext<'lua>,
+    value: Result<V, AnyError>,
+) -> (LuaValue, LuaValue)
+where
+    V: ToLua<'lua>,
+{
+    match value {
+        Ok(value) => (value.to_lua(ctx).unwrap(), LuaValue::Nil),
+        Err(error) => (LuaValue::Boolean(false), error.to_string().to_lua(ctx).unwrap()),
+    }
 }
