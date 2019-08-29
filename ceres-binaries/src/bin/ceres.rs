@@ -6,7 +6,7 @@ type AnyError = Box<dyn Error + Sync + Send + 'static>;
 
 fn main() {
     let matches = clap_app!(Ceres =>
-        (version: "0.1.2")
+        (version: "0.2.0")
         (author: "mori <mori@reu.moe>")
         (about: "Ceres is a build tool, script compiler and map preprocessor for WC3 Lua maps.")
         (@subcommand build =>
@@ -77,7 +77,11 @@ fn exec(arg: &clap::ArgMatches) -> Result<(), AnyError> {
 
     let script = std::fs::read_to_string(script)?;
 
-    ceres_core::execute_script(ceres_core::CeresRunMode::Build, Vec::new(), None, &script)?;
+    ceres_core::execute_script(ceres_core::CeresRunMode::Build, Vec::new(), None, |ctx| {
+        ctx.load(&script).exec()?;
+        
+        Ok(())
+    })?;
 
     Ok(())
 }

@@ -32,9 +32,9 @@ pub struct ContextError<E: Error> {
 }
 
 impl<E: Error> ContextError<E> {
-    pub fn new<S: AsRef<str>>(context: S, cause: E) -> Self {
+    pub fn new<S: Into<String>>(context: S, cause: E) -> Self {
         ContextError {
-            context: context.as_ref().into(),
+            context: context.into(),
             cause,
         }
     }

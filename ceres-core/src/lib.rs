@@ -9,12 +9,12 @@ pub(crate) mod compiler;
 use std::fs;
 use std::path::PathBuf;
 use std::rc::Rc;
-use std::borrow::Cow;
 
 use rlua::prelude::*;
 
 use crate::error::AnyError;
 use crate::error::CompilerError;
+use crate::error::ContextError;
 
 #[derive(Copy, Clone)]
 pub enum CeresRunMode {
@@ -35,12 +35,15 @@ fn send_manifest_data(port: u16) {
     write!(connection, "Hello World!").unwrap();
 }
 
-pub fn execute_script(
+pub fn execute_script<F>(
     run_mode: CeresRunMode,
     script_args: Vec<&str>,
     manifest_port: Option<u16>,
-    script: &str,
-) -> Result<(), AnyError> {
+    action: F,
+) -> Result<(), AnyError>
+where
+    F: FnOnce(LuaContext) -> Result<(), AnyError>,
+{
     const DEFAULT_BUILD_SCRIPT: &str = include_str!("resource/buildscript_default.lua");
 
     let lua = Rc::new(Lua::new());
@@ -55,7 +58,7 @@ pub fn execute_script(
                 script_args.into_iter().map(|s| s.into()).collect(),
             );
 
-            ctx.load(script).exec()?;
+            action(ctx).map_err(LuaError::external)?;
 
             Ok(())
         })
@@ -91,10 +94,23 @@ pub fn run_build_script(
     const DEFAULT_BUILD_SCRIPT: &str = include_str!("resource/buildscript_default.lua");
 
     let build_script_path = project_dir.join("build.lua");
-    let build_script = fs::read_to_string(&build_script_path)
-        .ok()
-        .map(Cow::Owned)
-        .unwrap_or_else(|| Cow::Borrowed(DEFAULT_BUILD_SCRIPT));
 
-    execute_script(run_mode, script_args, manifest_port, build_script.as_ref())
+    let build_script = if build_script_path.is_file() {
+        Some(
+            fs::read_to_string(&build_script_path)
+                .map_err(|cause| ContextError::new("Could not read custom build script", cause))?,
+        )
+    } else {
+        None
+    };
+
+    execute_script(run_mode, script_args, manifest_port, |ctx| {
+        if let Some(build_script) = build_script {
+            ctx.load(&build_script).exec()?;
+        }
+
+        ctx.load(DEFAULT_BUILD_SCRIPT).exec()?;
+
+        Ok(())
+    })
 }
