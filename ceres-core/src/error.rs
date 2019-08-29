@@ -11,6 +11,20 @@ use ceres_parsers::lua;
 pub type AnyError = Box<dyn Error + Sync + Send + 'static>;
 
 #[derive(Error, Debug)]
+#[error(display = "{}", message)]
+pub struct StringError {
+    message: String
+}
+
+impl StringError {
+    pub fn new<S: Into<String>>(message: S) -> StringError {
+        StringError {
+            message: message.into()
+        }
+    }
+}
+
+#[derive(Error, Debug)]
 #[error(display = "{}: {}", context, cause)]
 pub struct ContextError<E: Error> {
     context: String,

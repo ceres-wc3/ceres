@@ -62,8 +62,10 @@ pub fn setup_ceres_environ(
         .unwrap();
 
     let fs_table = fs::get_fs_module(ctx);
+    let mpq_table = mpq::get_mpq_module(ctx);
 
     globals.set("fs", fs_table).unwrap();
+    globals.set("mpq", mpq_table).unwrap();
     globals.set("ceres", ceres_table).unwrap();
 
     ctx.load(CERES_BUILDSCRIPT_LIB).exec().unwrap();

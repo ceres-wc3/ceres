@@ -1,12 +1,15 @@
 use std::fs;
-use std::io::{Read, Write, BufReader, BufWriter, SeekFrom, Seek};
+use std::io::{BufReader, BufWriter};
+use std::path::PathBuf;
 
 use rlua::prelude::*;
 use mpq::Archive;
 use mpq::Creator;
 use mpq::FileOptions;
+use walkdir::WalkDir;
 
 use crate::error::AnyError;
+use crate::error::StringError;
 use crate::lua::util::lua_wrap_result;
 
 type FileArchive = Archive<BufReader<fs::File>>;
@@ -17,7 +20,6 @@ struct Viewer {
 
 struct Builder {
     creator: Creator,
-    header:  Option<Vec<u8>>,
 }
 
 impl LuaUserData for Viewer {
@@ -26,15 +28,16 @@ impl LuaUserData for Viewer {
         T: LuaUserDataMethods<'lua, Self>,
     {
         methods.add_method_mut("readFile", |ctx, obj, path: (LuaString)| {
-            let result = readflow_readfile(&mut obj.archive, path);
+            let result = readflow_readfile(&mut obj.archive, path)
+                .map(|s| ctx.create_string(&s).unwrap());
 
             Ok(lua_wrap_result(ctx, result))
         });
 
         methods.add_method_mut("files", |_, obj, _: ()| Ok(obj.archive.files()));
 
-        methods.add_method_mut("header", |ctx, obj, _: ()| {
-            let result = readflow_getheader(&mut obj.archive);
+        methods.add_method_mut("extractTo", |ctx, obj, path: (LuaString)| {
+            let result = readflow_extract(&mut obj.archive, path);
 
             Ok(lua_wrap_result(ctx, result))
         });
@@ -66,14 +69,29 @@ impl LuaUserData for Builder {
             },
         );
 
+        methods.add_method_mut(
+            "addFromDir",
+            |ctx, obj, (dir_path, options): (LuaString, Option<LuaTable>)| {
+                let options = fileoptions_from_table(options);
+                let result = writeflow_adddir(obj, dir_path, options);
+
+                Ok(lua_wrap_result(ctx, result))
+            },
+        );
+
+        methods.add_method_mut(
+            "addFromMpq",
+            |ctx, obj, (viewer, options): (LuaAnyUserData, Option<LuaTable>)| {
+                let mut viewer = viewer.borrow_mut::<Viewer>()?;
+                let options = fileoptions_from_table(options);
+                let result = writeflow_addmpq(obj, &mut viewer.archive, options);
+
+                Ok(lua_wrap_result(ctx, result))
+            },
+        );
+
         methods.add_method_mut("write", |ctx, obj, path: (LuaString)| {
             let result = writeflow_write(obj, path);
-
-            Ok(lua_wrap_result(ctx, result))
-        });
-
-        methods.add_method_mut("setHeader", |ctx, obj, header: (LuaString)| {
-            let result = writeflow_setheader(obj, header.as_bytes());
 
             Ok(lua_wrap_result(ctx, result))
         });
@@ -107,18 +125,38 @@ fn readflow_readfile(archive: &mut FileArchive, path: LuaString) -> Result<Vec<u
     Ok(archive.read_file(path)?)
 }
 
-fn readflow_getheader(archive: &mut FileArchive) -> Result<Option<Vec<u8>>, AnyError> {
-    let start = archive.start();
+fn readflow_extract(archive: &mut FileArchive, path: LuaString) -> Result<bool, AnyError> {
+    let path = path.to_str()?;
+    let path: PathBuf = path.into();
 
-    if start > 0 {
-        let reader = archive.reader();
-        reader.seek(SeekFrom::Start(0))?;
-        let mut buf = vec![0u8; start as usize];
-        reader.read_exact(&mut buf)?;
-        Ok(Some(buf))
-    } else {
-        Ok(None)
+    let files = archive
+        .files()
+        .ok_or_else(|| StringError::new("no listfile found"))?;
+    for file in files {
+        let contents = archive.read_file(&file);
+
+        if let Err(error) = contents {
+            eprintln!("mpq.extractTo(): could not read file {}: {}", file, error);
+            continue;
+        }
+
+        let out_path = path.join(&file);
+
+        if let Err(error) = fs::create_dir_all(out_path.parent().unwrap()) {
+            eprintln!(
+                "mpq.extractTo(): could not create directory for file {}: {}",
+                file, error
+            );
+            continue;
+        }
+
+        if let Err(error) = fs::write(out_path, contents.unwrap()) {
+            eprintln!("mpq.extractTo(): could not write file {}: {}", file, error);
+            continue;
+        }
     }
+
+    Ok(true)
 }
 
 fn readflow_open(path: &str) -> Result<Viewer, AnyError> {
@@ -128,12 +166,6 @@ fn readflow_open(path: &str) -> Result<Viewer, AnyError> {
     let archive = Archive::open(file)?;
 
     Ok(Viewer { archive })
-}
-
-fn writeflow_setheader(builder: &mut Builder, contents: &[u8]) -> Result<bool, AnyError> {
-    builder.header = Some(contents.into());
-
-    Ok(true)
 }
 
 fn writeflow_addbuf(
@@ -164,6 +196,63 @@ fn writeflow_addfile(
     Ok(true)
 }
 
+fn writeflow_adddir(
+    builder: &mut Builder,
+    dir_path: LuaString,
+    options: FileOptions,
+) -> Result<bool, AnyError> {
+    let dir_path: PathBuf = dir_path.to_str()?.into();
+
+    let entries = WalkDir::new(&dir_path)
+        .follow_links(true)
+        .into_iter()
+        .filter_map(|s| s.ok())
+        .filter(|s| s.file_type().is_file());
+
+    for entry in entries {
+        let contents = fs::read(entry.path());
+
+        if let Err(error) = contents {
+            eprintln!(
+                "mpq.addFromDir(): could not add file {}: {}",
+                entry.path().display(),
+                error
+            );
+            continue;
+        }
+
+        let relative_path = entry.path().strip_prefix(&dir_path).unwrap();
+        builder
+            .creator
+            .add_file(relative_path.to_str().unwrap(), contents.unwrap(), options);
+    }
+
+    Ok(true)
+}
+
+fn writeflow_addmpq(
+    builder: &mut Builder,
+    archive: &mut FileArchive,
+    options: FileOptions,
+) -> Result<bool, AnyError> {
+    let files = archive
+        .files()
+        .ok_or_else(|| StringError::new("no listfile found"))?;
+
+    for file in files {
+        let contents = archive.read_file(&file);
+
+        if let Err(error) = contents {
+            eprintln!("mpq.addFromMpq(): couldn't add file {}: {}", &file, error);
+            continue;
+        }
+
+        builder.creator.add_file(&file, contents.unwrap(), options);
+    }
+
+    Ok(true)
+}
+
 fn writeflow_write(builder: &mut Builder, path: LuaString) -> Result<bool, AnyError> {
     let path = path.to_str()?;
     let writer = fs::OpenOptions::new()
@@ -173,9 +262,6 @@ fn writeflow_write(builder: &mut Builder, path: LuaString) -> Result<bool, AnyEr
         .open(path)?;
 
     let mut writer = BufWriter::new(writer);
-    if let Some(header) = &builder.header {
-        writer.write_all(&header)?;
-    }
     let creator = &mut builder.creator;
     creator.write(&mut writer)?;
 
@@ -185,10 +271,7 @@ fn writeflow_write(builder: &mut Builder, path: LuaString) -> Result<bool, AnyEr
 fn writeflow_new() -> Result<Builder, AnyError> {
     let creator = Creator::default();
 
-    Ok(Builder {
-        creator,
-        header: None,
-    })
+    Ok(Builder { creator })
 }
 
 fn get_mpqopen_luafn(ctx: LuaContext) -> LuaFunction {

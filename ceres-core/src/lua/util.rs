@@ -81,15 +81,17 @@ pub fn table_to_string(table: LuaTable) -> String {
     out
 }
 
-pub fn lua_wrap_result<'lua, V>(
-    ctx: LuaContext<'lua>,
-    value: Result<V, AnyError>,
-) -> (LuaValue, LuaValue)
+pub fn lua_wrap_result<'lua, V>(ctx: LuaContext<'lua>, value: Result<V, AnyError>) -> LuaMultiValue
 where
-    V: ToLua<'lua>,
+    V: ToLuaMulti<'lua>,
 {
     match value {
-        Ok(value) => (value.to_lua(ctx).unwrap(), LuaValue::Nil),
-        Err(error) => (LuaValue::Boolean(false), error.to_string().to_lua(ctx).unwrap()),
+        Ok(value) => value.to_lua_multi(ctx).unwrap(),
+        Err(error) => (
+            LuaValue::Boolean(false),
+            error.to_string().to_lua(ctx).unwrap(),
+        )
+            .to_lua_multi(ctx)
+            .unwrap(),
     }
 }

@@ -2,17 +2,16 @@
 
 extern crate ceres_mpq as mpq;
 
-pub mod lua;
-
-// mod config;
-pub mod error;
-mod compiler;
-
-use rlua::prelude::*;
+pub(crate) mod lua;
+pub(crate) mod error;
+pub(crate) mod compiler;
 
 use std::fs;
 use std::path::PathBuf;
 use std::rc::Rc;
+use std::borrow::Cow;
+
+use rlua::prelude::*;
 
 use crate::error::AnyError;
 use crate::error::CompilerError;
@@ -36,16 +35,13 @@ fn send_manifest_data(port: u16) {
     write!(connection, "Hello World!").unwrap();
 }
 
-pub fn run_build_script(
+pub fn execute_script(
     run_mode: CeresRunMode,
-    project_dir: PathBuf,
     script_args: Vec<&str>,
     manifest_port: Option<u16>,
+    script: &str,
 ) -> Result<(), AnyError> {
     const DEFAULT_BUILD_SCRIPT: &str = include_str!("resource/buildscript_default.lua");
-
-    let build_script_path = project_dir.join("build.lua");
-    let build_script = fs::read_to_string(&build_script_path).ok();
 
     let lua = Rc::new(Lua::new());
 
@@ -59,13 +55,7 @@ pub fn run_build_script(
                 script_args.into_iter().map(|s| s.into()).collect(),
             );
 
-            let build_script_src = if build_script.is_some() {
-                build_script.as_ref().unwrap()
-            } else {
-                DEFAULT_BUILD_SCRIPT
-            };
-
-            ctx.load(build_script_src).exec()?;
+            ctx.load(script).exec()?;
 
             Ok(())
         })
@@ -85,9 +75,26 @@ pub fn run_build_script(
         println!("[ERROR] A Lua error occured in the build script:\n{}", err);
     }
 
-    if let Err(_) = result {
+    if result.is_err() {
         std::process::exit(1);
     }
 
     Ok(())
+}
+
+pub fn run_build_script(
+    run_mode: CeresRunMode,
+    project_dir: PathBuf,
+    script_args: Vec<&str>,
+    manifest_port: Option<u16>,
+) -> Result<(), AnyError> {
+    const DEFAULT_BUILD_SCRIPT: &str = include_str!("resource/buildscript_default.lua");
+
+    let build_script_path = project_dir.join("build.lua");
+    let build_script = fs::read_to_string(&build_script_path)
+        .ok()
+        .map(Cow::Owned)
+        .unwrap_or_else(|| Cow::Borrowed(DEFAULT_BUILD_SCRIPT));
+
+    execute_script(run_mode, script_args, manifest_port, build_script.as_ref())
 }

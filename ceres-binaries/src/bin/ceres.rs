@@ -1,6 +1,8 @@
+use std::error::Error;
+
 use clap::clap_app;
 
-use ceres_core::error::AnyError;
+type AnyError = Box<dyn Error + Sync + Send + 'static>;
 
 fn main() {
     let matches = clap_app!(Ceres =>
@@ -21,9 +23,11 @@ fn main() {
             (@arg dir: --dir -d +takes_value "Sets the project directory.")
             (@arg BUILD_ARGS: ... "Arguments to pass to the build script.")
         )
-        (@subcommand parse => (@arg FILE: +required "Debug."))
-        (@subcommand mpqtest =>
-            (@arg FILE: +required)
+        (@subcommand exec =>
+            (about: "Executes the specified lua file using Ceres runtime")
+            (setting: clap::AppSettings::TrailingVarArg)
+            (@arg script: +required +takes_value)
+            (@arg BUILD_ARGS: ... "Arguments to pass to the build script.")
         )
     )
     .get_matches();
@@ -65,35 +69,26 @@ fn run_build(arg: &clap::ArgMatches, mode: ceres_core::CeresRunMode) -> Result<(
     Ok(())
 }
 
+fn exec(arg: &clap::ArgMatches) -> Result<(), AnyError> {
+    let script = arg
+        .value_of("script")
+        .map(std::path::PathBuf::from)
+        .unwrap();
+
+    let script = std::fs::read_to_string(script)?;
+
+    ceres_core::execute_script(ceres_core::CeresRunMode::Build, Vec::new(), None, &script)?;
+
+    Ok(())
+}
+
 fn run(matches: clap::ArgMatches) -> Result<(), AnyError> {
     if let Some(arg) = matches.subcommand_matches("build") {
         run_build(arg, ceres_core::CeresRunMode::Build)?;
     } else if let Some(arg) = matches.subcommand_matches("run") {
         run_build(arg, ceres_core::CeresRunMode::RunMap)?;
-    } else if let Some(arg) = matches.subcommand_matches("parse") {
-        // this is just some debugging ...
-
-        use ceres_parsers::lua;
-        use pest::Parser;
-
-        let input = std::fs::read_to_string(arg.value_of("FILE").unwrap())?;
-
-        let a = lua::LuaParser::parse(lua::Rule::Chunk, &input).unwrap();
-
-        fn prnt(pairs: pest::iterators::Pairs<lua::Rule>, indent: usize) {
-            for pair in pairs {
-                println!(
-                    "{}>{:?}: {}",
-                    " ".repeat(indent),
-                    pair.as_rule(),
-                    pair.as_str().replace("\n", " ")
-                );
-
-                prnt(pair.into_inner(), indent + 1);
-            }
-        }
-
-        prnt(a, 0);
+    } else if let Some(arg) = matches.subcommand_matches("exec") {
+        exec(arg)?;
     }
 
     Ok(())
