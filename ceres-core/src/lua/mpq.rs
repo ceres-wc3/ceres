@@ -28,8 +28,8 @@ impl LuaUserData for Viewer {
         T: LuaUserDataMethods<'lua, Self>,
     {
         methods.add_method_mut("readFile", |ctx, obj, path: (LuaString)| {
-            let result = readflow_readfile(&mut obj.archive, path)
-                .map(|s| ctx.create_string(&s).unwrap());
+            let result =
+                readflow_readfile(&mut obj.archive, path).map(|s| ctx.create_string(&s).unwrap());
 
             Ok(lua_wrap_result(ctx, result))
         });

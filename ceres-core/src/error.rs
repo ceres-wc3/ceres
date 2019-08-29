@@ -13,13 +13,13 @@ pub type AnyError = Box<dyn Error + Sync + Send + 'static>;
 #[derive(Error, Debug)]
 #[error(display = "{}", message)]
 pub struct StringError {
-    message: String
+    message: String,
 }
 
 impl StringError {
     pub fn new<S: Into<String>>(message: S) -> StringError {
         StringError {
-            message: message.into()
+            message: message.into(),
         }
     }
 }

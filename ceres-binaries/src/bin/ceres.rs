@@ -79,7 +79,7 @@ fn exec(arg: &clap::ArgMatches) -> Result<(), AnyError> {
 
     ceres_core::execute_script(ceres_core::CeresRunMode::Build, Vec::new(), None, |ctx| {
         ctx.load(&script).exec()?;
-        
+
         Ok(())
     })?;
 
