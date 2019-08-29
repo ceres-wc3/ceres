@@ -106,10 +106,10 @@ pub fn run_build_script(
 
     execute_script(run_mode, script_args, manifest_port, |ctx| {
         if let Some(build_script) = build_script {
-            ctx.load(&build_script).exec()?;
+            ctx.load(&build_script).set_name("custom build script").unwrap().exec()?;
         }
 
-        ctx.load(DEFAULT_BUILD_SCRIPT).exec()?;
+        ctx.load(DEFAULT_BUILD_SCRIPT).set_name("buildscript_default.lua").unwrap().exec()?;
 
         Ok(())
     })

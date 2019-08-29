@@ -68,5 +68,5 @@ pub fn setup_ceres_environ(
     globals.set("mpq", mpq_table).unwrap();
     globals.set("ceres", ceres_table).unwrap();
 
-    ctx.load(CERES_BUILDSCRIPT_LIB).exec().unwrap();
+    ctx.load(CERES_BUILDSCRIPT_LIB).set_name("buildscript_lib.lua").unwrap().exec().unwrap();
 }

@@ -95,10 +95,7 @@ function mapMeta:writeToMpq(path)
         end
     end
 
-    local success, errorMsg = creator:write(path)
-    if not success then
-        print("Couldn't write archive to " .. path .. ": " .. errorMsg)
-    end
+    return creator:write(path)
 end
 
 function ceres.openMap(name)
@@ -204,7 +201,7 @@ function ceres.buildMap(buildCommand)
     local script, errorMsg = ceres.compileScript {
         srcDirectory = ceres.layout.srcDirectory,
         libDirectory = ceres.layout.libDirectory,
-        mapScript = mapScript
+        mapScript = mapScript or ""
     }
 
     if errorMsg ~= nil then
@@ -291,7 +288,7 @@ function ceres.defaultHandler()
     local noKeepScript = arg.value("--no-map-script") or false
 
     local artifactPath = ceres.buildMap {
-        input = map,
+        input = mapArg,
         output = outputType,
         retainMapScript = not noKeepScript
     }

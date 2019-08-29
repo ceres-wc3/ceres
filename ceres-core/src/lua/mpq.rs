@@ -10,6 +10,7 @@ use walkdir::WalkDir;
 
 use crate::error::AnyError;
 use crate::error::StringError;
+use crate::error::ContextError;
 use crate::lua::util::lua_wrap_result;
 
 type FileArchive = Archive<BufReader<fs::File>>;
@@ -126,8 +127,9 @@ fn readflow_readfile(archive: &mut FileArchive, path: LuaString) -> Result<Vec<u
 }
 
 fn readflow_extract(archive: &mut FileArchive, path: LuaString) -> Result<bool, AnyError> {
-    let path = path.to_str()?;
-    let path: PathBuf = path.into();
+    let path: PathBuf = path.to_str()?.into();
+    fs::create_dir_all(path.parent().unwrap())
+        .map_err(|cause| ContextError::new("could not create folder for map", cause))?;
 
     let files = archive
         .files()
@@ -254,7 +256,11 @@ fn writeflow_addmpq(
 }
 
 fn writeflow_write(builder: &mut Builder, path: LuaString) -> Result<bool, AnyError> {
-    let path = path.to_str()?;
+    let path: PathBuf = path.to_str()?.into();
+
+    fs::create_dir_all(path.parent().unwrap())
+        .map_err(|cause| ContextError::new("could not create folder for map", cause))?;
+
     let writer = fs::OpenOptions::new()
         .write(true)
         .truncate(true)

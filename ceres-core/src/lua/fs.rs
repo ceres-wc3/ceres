@@ -176,8 +176,8 @@ fn get_exists_luafn(ctx: LuaContext) -> LuaFunction {
 pub fn get_fs_module(ctx: LuaContext) -> LuaTable {
     let table = ctx.create_table().unwrap();
 
-    table.set("writeFile", get_readfile_luafn(ctx)).unwrap();
-    table.set("readFile", get_writefile_luafn(ctx)).unwrap();
+    table.set("writeFile", get_writefile_luafn(ctx)).unwrap();
+    table.set("readFile", get_readfile_luafn(ctx)).unwrap();
     table.set("readDir", get_readdir_luafn(ctx)).unwrap();
     table.set("isDir", get_isdir_luafn(ctx)).unwrap();
     table.set("isFile", get_isfile_luafn(ctx)).unwrap();
