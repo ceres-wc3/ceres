@@ -7,11 +7,9 @@ edition = "2018"
 [dependencies]
 pest = "2.1.1"
 rlua = "0.16.3"
-matches = "0.1.8"
 serde = { version = "1.0.99", features = ["derive"] }
 toml = "0.5.3"
 indexmap = "1.1.0"
-unindent = "0.1.4"
 err-derive = "0.1.5"
 walkdir = "2.2.9"
 itertools = "0.8.0"
