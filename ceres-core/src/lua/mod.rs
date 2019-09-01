@@ -22,9 +22,6 @@ pub fn setup_ceres_environ(
     let ceres_table = ctx.create_table().unwrap();
 
     ceres_table
-        .set("registerMacro", macros::get_register_luafn(ctx))
-        .unwrap();
-    ceres_table
         .set("compileScript", compiler::get_compile_script_luafn(ctx))
         .unwrap();
 
