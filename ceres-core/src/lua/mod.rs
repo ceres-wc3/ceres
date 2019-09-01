@@ -3,6 +3,7 @@ pub mod compiler;
 pub mod macros;
 pub mod fs;
 pub mod mpq;
+pub mod launcher;
 
 use rlua::prelude::*;
 
@@ -50,7 +51,7 @@ pub fn setup_ceres_environ(
     ceres_table
         .set(
             "sendLayout",
-            ctx.create_function::<_, (), _>(|_, _: ()| Ok(())).unwrap(),
+            ctx.create_function(|_, _: ()| Ok(())).unwrap(),
         )
         .unwrap();
 
@@ -60,6 +61,10 @@ pub fn setup_ceres_environ(
             ctx.create_function(move |_, _: ()| Ok(script_args.clone()))
                 .unwrap(),
         )
+        .unwrap();
+
+    ceres_table
+        .set("runWarcraft", launcher::get_runmap_luafn(ctx))
         .unwrap();
 
     let fs_table = fs::get_fs_module(ctx);

@@ -128,3 +128,23 @@ impl From<CompilerError> for MacroInvocationError {
         MacroInvocationError::CompilerError { error }
     }
 }
+
+pub trait ResultExt<T, E> where E: Error {
+    fn context<S>(self, context: S) -> Result<T, ContextError<E>> where S: Into<String>;
+}
+
+impl<T, E> ResultExt<T, E> for Result<T, E> where E: Error {
+    fn context<S>(self, context: S) -> Result<T, ContextError<E>> where S: Into<String> {
+        self.map_err(|cause| ContextError::new(context, cause))
+    }
+}
+
+pub trait OptionExt<T> {
+    fn ok_message<S>(self, message: S) -> Result<T, StringError> where S: Into<String>;
+}
+
+impl<T> OptionExt<T> for Option<T> {
+    fn ok_message<S>(self, message: S) -> Result<T, StringError> where S: Into<String> {
+        self.ok_or_else(|| StringError::new(message))
+    }    
+}

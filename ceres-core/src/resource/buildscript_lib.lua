@@ -293,9 +293,11 @@ function ceres.defaultHandler()
         retainMapScript = not noKeepScript
     }
 
-    if ceres.isRunmapRequested() then
+    if ceres.runMode() == "run" then
         if artifactPath == nil then
             print("WARN: Runmap was requested, but the current build did not produce a runnable artifact...")
+        elseif ceres.runConfig == nil then
+            print("WARN: Runmap was requested, but ceres.runConfig is nil!")
         else
             print("Runmap was requested, running the map...")
             ceres.runMap(artifactPath)
@@ -303,3 +305,6 @@ function ceres.defaultHandler()
     end
 end
 
+function ceres.runMap(path)
+    ceres.runWarcraft(path, ceres.runConfig)
+end
