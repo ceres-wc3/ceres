@@ -119,6 +119,13 @@ fn lua_copy_dir(from: &str, to: &str) -> Result<bool, AnyError> {
     Ok(true)
 }
 
+fn lua_absolutize_path(path: &str) -> Result<String, AnyError> {
+    let path: PathBuf = path.into();
+
+    // TODO: Handle invalid UTF-8
+    Ok(path.absolutize()?.to_str().unwrap().into())
+}
+
 fn get_writefile_luafn(ctx: LuaContext) -> LuaFunction {
     ctx.create_function(move |ctx, (path, content): (String, LuaString)| {
         let result = lua_write_file(&path, content).map(|_| true);
@@ -173,6 +180,14 @@ fn get_exists_luafn(ctx: LuaContext) -> LuaFunction {
     .unwrap()
 }
 
+fn get_absolutize_luafn(ctx: LuaContext) -> LuaFunction {
+    ctx.create_function(|ctx, path: (String)| {
+        let result = lua_absolutize_path(&path);
+
+        Ok(lua_wrap_result(ctx, result))
+    }).unwrap()
+}
+
 pub fn get_fs_module(ctx: LuaContext) -> LuaTable {
     let table = ctx.create_table().unwrap();
 
@@ -182,6 +197,7 @@ pub fn get_fs_module(ctx: LuaContext) -> LuaTable {
     table.set("isDir", get_isdir_luafn(ctx)).unwrap();
     table.set("isFile", get_isfile_luafn(ctx)).unwrap();
     table.set("exists", get_exists_luafn(ctx)).unwrap();
+    table.set("absolutize", get_absolutize_luafn(ctx)).unwrap();
 
     table
 }
