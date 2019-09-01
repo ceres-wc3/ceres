@@ -11,7 +11,7 @@ use crate::CeresRunMode;
 pub fn setup_ceres_environ(
     ctx: LuaContext,
     run_mode: CeresRunMode,
-    manifest_requested: bool,
+    layout_requested: bool,
     script_args: Vec<String>,
 ) {
     const CERES_BUILDSCRIPT_LIB: &str = include_str!("../resource/buildscript_lib.lua");
@@ -29,10 +29,11 @@ pub fn setup_ceres_environ(
 
     ceres_table
         .set(
-            "isRunmapRequested",
-            ctx.create_function::<_, bool, _>(move |_, _: ()| match run_mode {
-                CeresRunMode::RunMap => Ok(true),
-                _ => Ok(false),
+            "runMode",
+            ctx.create_function(move |ctx, _: ()| match run_mode {
+                CeresRunMode::RunMap => Ok(ctx.create_string("run")),
+                CeresRunMode::Build => Ok(ctx.create_string("build")),
+                CeresRunMode::LiveReload => Ok(ctx.create_string("reload")),
             })
             .unwrap(),
         )
@@ -40,15 +41,15 @@ pub fn setup_ceres_environ(
 
     ceres_table
         .set(
-            "isManifestRequested",
-            ctx.create_function::<_, bool, _>(move |_, _: ()| Ok(manifest_requested))
+            "isLayoutRequested",
+            ctx.create_function(move |_, _: ()| Ok(layout_requested))
                 .unwrap(),
         )
         .unwrap();
 
     ceres_table
         .set(
-            "sendManifest",
+            "sendLayout",
             ctx.create_function::<_, (), _>(|_, _: ()| Ok(())).unwrap(),
         )
         .unwrap();
@@ -68,5 +69,9 @@ pub fn setup_ceres_environ(
     globals.set("mpq", mpq_table).unwrap();
     globals.set("ceres", ceres_table).unwrap();
 
-    ctx.load(CERES_BUILDSCRIPT_LIB).set_name("buildscript_lib.lua").unwrap().exec().unwrap();
+    ctx.load(CERES_BUILDSCRIPT_LIB)
+        .set_name("buildscript_lib.lua")
+        .unwrap()
+        .exec()
+        .unwrap();
 }
