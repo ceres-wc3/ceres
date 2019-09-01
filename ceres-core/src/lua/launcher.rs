@@ -66,7 +66,7 @@ fn lua_run_map(path: LuaString, config: LuaTable) -> Result<bool, AnyError> {
     let config = LaunchConfig {
         launch_command,
         path_prefix,
-        extra_args: args.unwrap_or_default()
+        extra_args: args.unwrap_or_default(),
     };
 
     run_map(map_path, config)?;
@@ -79,5 +79,6 @@ pub fn get_runmap_luafn(ctx: LuaContext) -> LuaFunction {
         let result = lua_run_map(path, config);
 
         Ok(lua_wrap_result(ctx, result))
-    }).unwrap()
+    })
+    .unwrap()
 }

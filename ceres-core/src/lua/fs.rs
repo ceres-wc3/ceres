@@ -185,7 +185,8 @@ fn get_absolutize_luafn(ctx: LuaContext) -> LuaFunction {
         let result = lua_absolutize_path(&path);
 
         Ok(lua_wrap_result(ctx, result))
-    }).unwrap()
+    })
+    .unwrap()
 }
 
 pub fn get_fs_module(ctx: LuaContext) -> LuaTable {
