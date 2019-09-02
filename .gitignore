@@ -1,6 +1,7 @@
 /*
 
 *.log
+!.gitattributes
 !/docs
 !/ceres-binaries
 !/ceres-core
