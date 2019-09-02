@@ -16,9 +16,9 @@ Because everything is bundled together into one executable, you don't need to fu
 
 Documentation is a bit sparse at the moment, however, I'm trying to fill the gaps as I go.
 
-[Manual](docs/manual.md)
-[Compiletime APIs](docs/compiletime.md)
-[Setup Guide](docs/setup.md)
+[Manual](docs/manual.md)  
+[Compiletime APIs](docs/compiletime.md)  
+[Setup Guide](docs/setup.md)  
 
 # Current Status
 
