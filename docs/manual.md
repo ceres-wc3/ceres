@@ -21,7 +21,7 @@ Ceres has a relatively simple build process.
 
 1. Arguments are parsed and the run mode is determined. A typical Ceres command will look like `ceres <command> [ceres args] -- <buildscript args>`. Notice the double dash `--`. Arguments before it are arguments to Ceres itself, while everything else will be passed on verbatim to the **build script**.
 
-2. Ceres initializes a Lua runtime with WC3-specific extensions and APIs. It then loads a (Lua library)[../ceres-core/src/resources/buildscript_lib.lua] with some extra utilities and a default "build workflow". It then looks for a `build.lua` file in the working directory and runs that. After that, it runs `ceres.defaultHandler()`, which parses script arguments and kicks off the default build process, unless `ceres.suppressDefaultHandler()` has been called.
+2. Ceres initializes a Lua runtime with WC3-specific extensions and APIs. It then loads a [Lua library](../ceres-core/src/resource/buildscript_lib.lua) with some extra utilities and a default "build workflow". It then looks for a `build.lua` file in the working directory and runs that. After that, it runs `ceres.defaultHandler()`, which parses script arguments and kicks off the default build process, unless `ceres.suppressDefaultHandler()` has been called.
 
 3. The default build workflow will try to determine the **input map** (`--map <mapname>`), and an **output type** (`--output <type>`). The input map is what Ceres will use as a "base" for producing a new map, and can be in either MPQ or directory format. The output type can be one of `mpq`, `dir`, or `script`.
 
