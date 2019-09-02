@@ -17,10 +17,14 @@ use crate::CeresRunMode;
 
 #[derive(Serialize, Deserialize)]
 struct ProjectLayout {
-    maps_dir: String,
-    src_dir: String,
-    lib_dir: String,
-    target_dir: String
+    #[serde(rename = "mapsDirectory")]
+    maps_directory: String,
+    #[serde(rename = "srcDirectory")]
+    src_directory: String,
+    #[serde(rename = "libDirectory")]
+    lib_directory: String,
+    #[serde(rename = "targetDirectory")]
+    target_directory: String
 }
 
 fn send_layout(port: Option<u16>, layout: LuaTable) {
