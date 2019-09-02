@@ -274,8 +274,8 @@ end
 -- The default handler for "build" and "run" commands in Ceres
 -- Will parse the arguments and invoke ceres.buildMap()
 function ceres.defaultHandler()
-    if ceres.isManifestRequested() then
-        ceres.sendManifest(ceres.layout)
+    if ceres.isLayoutRequested() then
+        ceres.sendLayout(ceres.layout)
         return
     end
 

@@ -38,7 +38,7 @@ fn send_manifest_data(port: u16) {
 pub fn execute_script<F>(
     run_mode: CeresRunMode,
     script_args: Vec<&str>,
-    manifest_port: Option<u16>,
+    extension_port: Option<u16>,
     action: F,
 ) -> Result<(), AnyError>
 where
@@ -54,8 +54,8 @@ where
             lua::setup_ceres_environ(
                 ctx,
                 run_mode,
-                manifest_port.is_some(),
                 script_args.into_iter().map(|s| s.into()).collect(),
+                extension_port,
             );
 
             action(ctx).map_err(LuaError::external)?;
@@ -89,7 +89,7 @@ pub fn run_build_script(
     run_mode: CeresRunMode,
     project_dir: PathBuf,
     script_args: Vec<&str>,
-    manifest_port: Option<u16>,
+    extension_port: Option<u16>,
 ) -> Result<(), AnyError> {
     const DEFAULT_BUILD_SCRIPT: &str = include_str!("resource/buildscript_default.lua");
 
@@ -104,7 +104,7 @@ pub fn run_build_script(
         None
     };
 
-    execute_script(run_mode, script_args, manifest_port, |ctx| {
+    execute_script(run_mode, script_args, extension_port, |ctx| {
         if let Some(build_script) = build_script {
             ctx.load(&build_script)
                 .set_name("custom build script")

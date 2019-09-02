@@ -159,7 +159,7 @@ impl<'lua, MO: ModuleProvider, MA: MacroProvider> ScriptCompiler<'lua, MO, MA> {
             out += "\n--[[ map script end ]]\n\n";
         }
 
-        for (id, compiled_module) in &self.compiled_modules {
+        for (id, compiled_module) in self.compiled_modules.iter() {
             let module_header_comment = format!("--[[ start of module \"{}\" ]]\n", id);
             let module_header = format!(
                 r#"__modules["{name}"] = {{initialized = false, cached = nil, loader = function()"#,
