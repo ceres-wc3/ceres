@@ -1,132 +1,46 @@
+**WARNING: The master branch currently hosts the 0.2.x version of Ceres which is largely untested and potentially unstable. Documentation is WIP and is incomplete. If you're looking for the old 0.1.x version, click (here)[https://github.com/ElusiveMori/ceres-wc3/tree/v0.1.5]**
+
 # About
 
-Ceres is a Warcraft III map builder and code preprocessor for Lua-based maps.
-Runs on Windows and Linux.
+Ceres is a build toolchain for **Warcraft III Lua Maps**. Its primary goal is to allow **editing maps in the comfort of your code editor of choice**, while also using the opportunity to provide additional utilities to mappers that are currently not present in World Editor, or unlikely to ever be introduced into World Editor.
 
-# Current Features:
+If you just want to get started with making a Warcraft III map using Lua, skip to (Setup)[docs/setup.md].
 
-* Convenient project folder structure 
-* Building and running the map in WC3 from the command line
-* Combines code from `.lua` files into a single `war3map.lua`
-* Lua-like `require`-based module system built-in
-* Basic macro support - `include` and `compiletime`
+To be more precise, Ceres in a **bundled Lua runtime** with facilities and libraries specific to Warcraft III map development. Most operations in Ceres actually run various Lua scripts, with extensions provided by Ceres itself, such as reading and writing of MPQ archives, filesystem access, a script compiler for WC3 maps, and so on.
 
-# Setup
+Ceres comes bundled with a default **build script** written in Lua which aims to provide a standard, configurable workflow for building a Warcraft III map. The build script is configurable and extensible, and if you wish you can just run an entirely unrelated Lua script using Ceres' built-in libraries. It's built to be useful as more than just a compiler.
 
-At the moment, you will have to set everything up manually.
+Because everything is bundled together into one executable, you don't need to fuss around with external requirements, dependency managers, and anything else. Ceres is meant to be portable and easy to get running.
 
-First, create a Ceres project folder, with the following structure:
+# Documentation
 
-* `src/` - Script source files. Place your map scripts here.
-* * `main.lua` - This is your map's entry point. All other scripts and resources should be required/included from this file.
-* `lib/` - Script library files. Right now, this is equivalent to `src/`. In the future, this is where things like the standard library will go to, as well as any additional dependencies you have.
-* `maps/` - Map sources. Each directory in this directory must be a valid WC3 map folder.
-* `ceres.toml` - Ceres configuration file. For an example of a default config file, look below. Currently, this file is mandatory, and Ceres won't work if it's not found.
+Documentation is a bit sparse at the moment, however, I'm trying to fill the gaps as I go.
 
-# Configuration
+(Manual)[docs/manual.md]
+(Compiletime APIs)[docs/compiletime.md]
+(Setup Guide)[docs/setup.md]
 
-In order to specify various configuration values, Ceres looks for a `ceres.toml` file in the project directory or for a `$HOME/.ceres/config.toml` file.
+# Current Status
 
-## Windows Configuration
-For usage on Windows, you only need the following:
-```toml
-[run]
-# if you're using backslashes, double them
-wc3_start_command = "C:\\path\\to\\war3.exe"
-# or just use forward slashes, both variants work
-wc3_start_command = "C:/path/to/war3.exe"
-```
+At the moment, Ceres is able to compile multiple Lua files into a single Lua script for distribution in Warcraft III maps, and has a framework around the compiler to facilitate the map build process. It can read and write MPQ archives for final distribution of a map.
 
-You can also specify which window mode to use:
-```toml
-[run]
-wc3_start_command = "<PATH TO WC3 EXECUTABLE>"
-window_mode = "windowedfullscreen" # other possible values: fullscreen, windowed
-```
+The compiler is currently able to:
+* Resolve module dependencies and compile it all down into a single Lua file
+* Process custom macros and evaluate Lua code during the build of a map
 
-## Linux Configuration
-For usage on Linux, you will also need to specify that you're running WC3 under wine and what path prefix to use to locate the map.
-```toml
-[run]
-wc3_start_command = "start-wc3"
-is_wine = true
-wine_disk_prefix = "Z:"
-window_mode = "windowedfullscreen"
-```
+The second point allows you to run arbitrary Lua code while the map is compiling. Right now this feature isn't terribly useful, however in the future it will allow to edit the map being compiled to add custom units, spells, set map description, etc. from within Lua scripts.
 
-In this example, `start-wc3` is a custom script that launches Warcraft III in it's own `WINEPREFIX`. 
+# Roadmap
 
-# Usage
-
-You can download the latest version in the Releases tab above.
-
-Currently, Ceres only supports command-line usage. Make sure that the `ceres` executable is either in your `PATH`, or otherwise easily accessible.
-
-To build a map, `cd` into the project directory, and run:
-
-`ceres build mymap.w3x`
-
-This will look for the map in the `maps/` folder and inject it with the code processed from `src/` and `lib`/. Currently, Ceres only supports folder-based maps (WC3 1.31 PTR feature).
-
-To build **and run** the map:
-
-`ceres run mymap.w3x`
-
-# Module System
-
-Ceres does some additional post-processing to add a Lua-like module system, which you are encouraged to take advantage of. To load a module, use:
-```lua
-require("mymodule")
-```
-This will look for the file `mymodule.lua`, first in the `lib/` directory, and then the `src/` directory, and include it into the final script if it's found.
-
-If the module returns some value, e.g. a table with the module's functions, then that can be accessed using:
-```lua
-local mymodule = require("mymodule")
-```
-
-If you want to include a module which is inside a sub-directory, use the dot notation syntax for the module name:
-```lua
-local stuff = require("hello.world.stuff")
-```
-
-This will load the module in either `lib/hello/world/stuff.lua` or `src/hellow/world/stuff.lua`.
-
-# Ceres built-ins
-
-Ceres offers some small utilities for injecting code into the `main` and `config` functions of `war3map.lua`, or for overwriting them entirely.
-
-```lua
--- add code to call before/after their respective entry points
-ceres.addHook("main::before", function() ... end)
-ceres.addHook("main::after", function() ... end)
-ceres.addHook("config::before", function() ... end)
-ceres.addHook("config::after", function() ... end)
-
--- override `main` and `config` entirely, without calling default code
--- Ceres hooks will still be called, however
-ceres.setMain(function() ... end)
-ceres.setConfig(function() ... end)
-```
-# Macros
-
-At the moment, Ceres offers two additional macros, with more possibly coming in the future.
-
-## `include()`
-
-This macro will inject the contents of the specified file into the source where it is called. Paths are relative to the project's root, e.g. `include("src/resource/somestuff")`
-
-## `compiletime()`
-
-This macro will evaluate the given Lua expression at compiletime, and emit any resulting values into the source, if there were any.
-If an argument is a function, then it is also executed.
-
-```lua
-print(compiletime(2 + 2)) -- compiles to print(4)
-print(compiletime("my epic string" .. " really epic")) -- compiles to print("my epic string really epic")
-print(compiletime(function()
-    local a = 1
-    local b = 2
-    return a + b
-end)) -- compiles to print(3)
-```
+- [x] Script compiler
+- [x] Macro system
+- [x] Lua-based build system
+- [x] MPQ read/write API
+- [ ] APIs to edit map data (objects, description, title, imports, etc.)
+- [ ] Standard WC3 Lua library 
+- [ ] Dependency manager (likely via git)
+- [ ] Beginner tutorial
+- [ ] Documentation of APIs provided by Ceres and advanced usage
+- [ ] VSCode integration via an extension
+- [ ] New project template
+- [ ] Auto-updates within Ceres (or via the VSCode extension)
