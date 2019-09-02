@@ -1,10 +1,10 @@
-**WARNING: The master branch currently hosts the 0.2.x version of Ceres which is largely untested and potentially unstable. Documentation is WIP and is incomplete. If you're looking for the old 0.1.x version, click (here)[https://github.com/ElusiveMori/ceres-wc3/tree/v0.1.5]**
+**WARNING: The master branch currently hosts the 0.2.x version of Ceres which is largely untested and potentially unstable. Documentation is WIP and is incomplete. If you're looking for the old 0.1.x version, click [here](https://github.com/ElusiveMori/ceres-wc3/tree/v0.1.5)**
 
 # About
 
 Ceres is a build toolchain for **Warcraft III Lua Maps**. Its primary goal is to allow **editing maps in the comfort of your code editor of choice**, while also using the opportunity to provide additional utilities to mappers that are currently not present in World Editor, or unlikely to ever be introduced into World Editor.
 
-If you just want to get started with making a Warcraft III map using Lua, skip to (Setup)[docs/setup.md].
+If you just want to get started with making a Warcraft III map using Lua, skip to [Setup](docs/setup.md).
 
 To be more precise, Ceres in a **bundled Lua runtime** with facilities and libraries specific to Warcraft III map development. Most operations in Ceres actually run various Lua scripts, with extensions provided by Ceres itself, such as reading and writing of MPQ archives, filesystem access, a script compiler for WC3 maps, and so on.
 
@@ -16,9 +16,9 @@ Because everything is bundled together into one executable, you don't need to fu
 
 Documentation is a bit sparse at the moment, however, I'm trying to fill the gaps as I go.
 
-(Manual)[docs/manual.md]
-(Compiletime APIs)[docs/compiletime.md]
-(Setup Guide)[docs/setup.md]
+[Manual](docs/manual.md)
+[Compiletime APIs](docs/compiletime.md)
+[Setup Guide](docs/setup.md)
 
 # Current Status
 
