@@ -74,10 +74,10 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 
 [[package]]
 name = "ceres-binaries"
-version = "0.2.0"
+version = "0.1.0-INTERNAL"
 dependencies = [
- "ceres-core 0.2.0",
- "ceres-parsers 0.2.0",
+ "ceres-core 0.1.0-INTERNAL",
+ "ceres-parsers 0.1.0-INTERNAL",
  "clap 2.33.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "pest 2.1.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "rlua 0.16.3 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -85,10 +85,10 @@ dependencies = [
 
 [[package]]
 name = "ceres-core"
-version = "0.2.0"
+version = "0.1.0-INTERNAL"
 dependencies = [
  "ceres-mpq 0.1.4 (registry+https://github.com/rust-lang/crates.io-index)",
- "ceres-parsers 0.2.0",
+ "ceres-parsers 0.1.0-INTERNAL",
  "err-derive 0.1.5 (registry+https://github.com/rust-lang/crates.io-index)",
  "indexmap 1.1.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "itertools 0.8.0 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -118,7 +118,7 @@ dependencies = [
 
 [[package]]
 name = "ceres-parsers"
-version = "0.2.0"
+version = "0.1.0-INTERNAL"
 dependencies = [
  "pest 2.1.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "pest_derive 2.1.0 (registry+https://github.com/rust-lang/crates.io-index)",
