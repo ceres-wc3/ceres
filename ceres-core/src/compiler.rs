@@ -1,4 +1,4 @@
-use std::path::PathBuf;
+use std::path::{PathBuf, Path};
 use std::path::Component;
 use std::collections::HashMap;
 use std::collections::HashSet;
@@ -41,12 +41,18 @@ impl ProjectModuleProvider {
     }
 
     pub fn scan(&mut self) {
-        for entry in WalkDir::new(&self.src_dir).follow_links(true) {
+        Self::scan_dir(&mut self.known_modules, &self.lib_dir);
+        Self::scan_dir(&mut self.known_modules, &self.src_dir);
+    }
+
+    fn scan_dir<P: AsRef<Path>>(modules: &mut HashMap<String, PathBuf>, path: P) {
+        let path = path.as_ref();
+        for entry in WalkDir::new(path).follow_links(true) {
             let entry = entry.unwrap();
 
             let ext = entry.path().extension();
             if ext.is_some() && ext.unwrap() == "lua" {
-                let relative_path = entry.path().strip_prefix(&self.src_dir).unwrap();
+                let relative_path = entry.path().strip_prefix(path).unwrap();
                 let module_path = relative_path
                     .components()
                     .filter_map(|s| {
@@ -60,7 +66,7 @@ impl ProjectModuleProvider {
 
                 let module_path = &module_path[..(module_path.len() - 4)];
 
-                self.known_modules
+                modules
                     .insert(module_path.into(), entry.into_path());
             }
         }
