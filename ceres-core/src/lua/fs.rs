@@ -106,11 +106,11 @@ fn lua_copy_dir(from: &str, to: &str) -> Result<bool, AnyError> {
                 to.display(),
                 error
             );
-        } else if let Err(error) = fs::copy(entry.path(), to.join(relative_path)) {
+        } else if let Err(error) = fs::copy(&from, &to) {
             eprintln!(
                 "fs.copyDir(): error copying [{} -> {}]: {}",
-                to.display(),
                 from.display(),
+                to.display(),
                 error
             );
         };
@@ -189,6 +189,15 @@ fn get_absolutize_luafn(ctx: LuaContext) -> LuaFunction {
     .unwrap()
 }
 
+fn get_copydir_luafn(ctx: LuaContext) -> LuaFunction {
+    ctx.create_function(|ctx, (from, to): (String, String)| {
+        let result = lua_copy_dir(&from, &to);
+
+        Ok(lua_wrap_result(ctx, result))
+    })
+    .unwrap()
+}
+
 pub fn get_fs_module(ctx: LuaContext) -> LuaTable {
     let table = ctx.create_table().unwrap();
 
@@ -199,6 +208,7 @@ pub fn get_fs_module(ctx: LuaContext) -> LuaTable {
     table.set("isFile", get_isfile_luafn(ctx)).unwrap();
     table.set("exists", get_exists_luafn(ctx)).unwrap();
     table.set("absolutize", get_absolutize_luafn(ctx)).unwrap();
+    table.set("copyDir", get_copydir_luafn(ctx)).unwrap();
 
     table
 }

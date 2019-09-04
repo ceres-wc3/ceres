@@ -32,7 +32,7 @@ fn compile_script(ctx: LuaContext, args: LuaTable) -> Result<String, AnyError> {
     let mut compiler = compiler::ScriptCompiler::new(ctx, module_provider, macro_provider);
 
     compiler.set_map_script(map_script.to_str()?.into());
-    compiler.add_module("main").map_err(LuaError::external)?;
+    compiler.add_module("main")?;
 
     Ok(compiler.emit_script())
 }

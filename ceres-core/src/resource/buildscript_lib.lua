@@ -208,6 +208,8 @@ function ceres.buildMap(buildCommand)
         print("ERR: Map build failed:")
         print(errorMsg)
         return false
+    else
+        map:addFileString("war3map.lua", script)
     end
 
     print("Successfuly built the map")
@@ -222,7 +224,7 @@ function ceres.buildMap(buildCommand)
         print("Writing artifact [mpq] to " .. artifactPath)
         _, errorMsg = map:writeToMpq(artifactPath)
     elseif outputType == "dir" then
-        artifactPath = ceres.layout.targetDirectory .. mapName .. ".dir"
+        artifactPath = ceres.layout.targetDirectory .. mapName .. ".dir/"
         print("Writing artifact [dir] to " .. artifactPath)
         _, errorMsg = map:writeToDir(artifactPath)
     end
@@ -285,7 +287,7 @@ function ceres.defaultHandler()
 
     local mapArg = arg.value("--map")
     local outputType = arg.value("--output") or "mpq"
-    local noKeepScript = arg.value("--no-map-script") or false
+    local noKeepScript = arg.exists("--no-map-script") or false
 
     local artifactPath = ceres.buildMap {
         input = mapArg,
@@ -306,5 +308,9 @@ function ceres.defaultHandler()
 end
 
 function ceres.runMap(path)
-    ceres.runWarcraft(path, ceres.runConfig)
+    local _, errorMsg = ceres.runWarcraft(path, ceres.runConfig)
+    if errorMsg ~= nil then
+        print("WARN: Running the map failed.")
+        print(errorMsg)
+    end
 end
