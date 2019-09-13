@@ -1,8 +1,8 @@
 --[[ ceres map header start ]]
-do
-    local ceres = {
-    }
+local ceres = {}
+local __modules = {}
 
+do
     local __ceres_hooks = {
         ["main::before"] = {},
         ["main::after"] = {},
@@ -55,7 +55,7 @@ do
         local success, err = pcall(callback, ...)
 
         if not success then
-            print(err)
+            print("ERROR: " .. err)
         end
     end
 
@@ -64,8 +64,6 @@ do
             ceres.catch(callback, ...)
         end
     end
-
-    local __modules = {}
 
     require = function(name)
         local module = __modules[name]
