@@ -1,5 +1,13 @@
 -- Build script utilities for Ceres
 
+function log(...)
+    local args = {...}
+    for k, v in pairs(args) do
+        args[k] = tostring(v)
+    end
+    io.stderr:write("> " .. table.concat(args, " ") .. "\n")
+end
+
 -- macro support
 function define(id, value)
     if type(value) == "function" then
@@ -75,12 +83,12 @@ function mapMeta:writeToMpq(path)
     if self.kind == "dir" then
         local success, errorMsg = creator:addFromDir(self.path)
         if not success then
-            print("Couldn't add directory " .. self.path .. " to archive: " .. errorMsg)
+            log("Couldn't add directory " .. self.path .. " to archive: " .. errorMsg)
         end
     elseif self.kind == "mpq" then
         local success, errorMsg = creator:addFromMpq(self.archive)
         if not success then
-            print("Couldn't add files from another archive: " .. errorMsg)
+            log("Couldn't add files from another archive: " .. errorMsg)
         end
     end
 
@@ -90,7 +98,7 @@ function mapMeta:writeToMpq(path)
         elseif v.kind == "file" then
             local success, errorMsg = creator:addFromFile(k, v.path)
             if not success then
-                print("Couldn't add file " .. k .. " to archive: " .. errorMsg)
+                log("Couldn't add file " .. k .. " to archive: " .. errorMsg)
             end
         end
     end
@@ -152,35 +160,35 @@ function ceres.buildMap(buildCommand)
     local outputType = buildCommand.output
 
     if not (outputType == "script" or outputType == "mpq" or outputType == "dir") then
-        print("ERR: Output type must be one of 'mpq', 'dir' or 'script'")
+        log("ERR: Output type must be one of 'mpq', 'dir' or 'script'")
         return false
     end
 
     if mapName == nil and (outputType == "mpq" or outputType == "dir") then
-        print("ERR: Output type " .. outputType .. " requires an input map, but none was specified")
+        log("ERR: Output type " .. outputType .. " requires an input map, but none was specified")
         return false
     end
 
-    print("Received build command");
-    print("    Input: " .. tostring(mapName))
-    print("    Retain map script: " .. tostring(buildCommand.retainMapScript))
-    print("    Output type: " .. buildCommand.output)
+    log("Received build command");
+    log("    Input: " .. tostring(mapName))
+    log("    Retain map script: " .. tostring(buildCommand.retainMapScript))
+    log("    Output type: " .. buildCommand.output)
 
     if mapName ~= nil then
         local loadedMap, errorMsg = ceres.openMap(mapName)
         if errorMsg ~= nil then
-            print("ERR: Could not load map " .. mapName .. ": " .. errorMsg)
+            log("ERR: Could not load map " .. mapName .. ": " .. errorMsg)
             return false
         end
-        print("Loaded map " .. mapName)
+        log("Loaded map " .. mapName)
 
         if buildCommand.retainMapScript then
             local loadedScript, errorMsg = loadedMap:readFile("war3map.lua")
             if errorMsg ~= nil then
-                print("WARN: Could not extract script from map " .. mapName .. ": " .. errorMsg)
-                print("WARN: Map script won't be included in the final artifact")
+                log("WARN: Could not extract script from map " .. mapName .. ": " .. errorMsg)
+                log("WARN: Map script won't be included in the final artifact")
             else
-                print("Loaded map script from " .. mapName)
+                log("Loaded map script from " .. mapName)
                 mapScript = loadedScript
             end
         end
@@ -189,11 +197,11 @@ function ceres.buildMap(buildCommand)
     end
 
     if map == nil then
-        print("Building in script-only mode")
+        log("Building in script-only mode")
     end
 
     if mapScript == nil then
-        print("Building without including original map script")
+        log("Building without including original map script")
     end
 
     _G.currentMap = map
@@ -205,35 +213,35 @@ function ceres.buildMap(buildCommand)
     }
 
     if errorMsg ~= nil then
-        print("ERR: Map build failed:")
-        print(errorMsg)
+        log("ERR: Map build failed:")
+        log(errorMsg)
         return false
     else
         map:addFileString("war3map.lua", script)
     end
 
-    print("Successfuly built the map")
+    log("Successfuly built the map")
 
     local errorMsg
     local artifactPath
     if outputType == "script" then
-        print("Writing artifact [script] to " .. ceres.layout.targetDirectory .. "war3map.lua")
+        log("Writing artifact [script] to " .. ceres.layout.targetDirectory .. "war3map.lua")
         _, errorMsg = fs.writeFile(ceres.layout.targetDirectory .. "war3map.lua", script)
     elseif outputType == "mpq" then
         artifactPath = ceres.layout.targetDirectory .. mapName
-        print("Writing artifact [mpq] to " .. artifactPath)
+        log("Writing artifact [mpq] to " .. artifactPath)
         _, errorMsg = map:writeToMpq(artifactPath)
     elseif outputType == "dir" then
         artifactPath = ceres.layout.targetDirectory .. mapName .. ".dir/"
-        print("Writing artifact [dir] to " .. artifactPath)
+        log("Writing artifact [dir] to " .. artifactPath)
         _, errorMsg = map:writeToDir(artifactPath)
     end
 
     if errorMsg ~= nil then
-        print("ERR: Saving the artifact failed: " .. errorMsg)
+        log("ERR: Saving the artifact failed: " .. errorMsg)
         return false
     else
-        print("Build complete!")
+        log("Build complete!")
         return artifactPath
     end
 end
@@ -297,11 +305,11 @@ function ceres.defaultHandler()
 
     if ceres.runMode() == "run" then
         if artifactPath == nil then
-            print("WARN: Runmap was requested, but the current build did not produce a runnable artifact...")
+            log("WARN: Runmap was requested, but the current build did not produce a runnable artifact...")
         elseif ceres.runConfig == nil then
-            print("WARN: Runmap was requested, but ceres.runConfig is nil!")
+            log("WARN: Runmap was requested, but ceres.runConfig is nil!")
         else
-            print("Runmap was requested, running the map...")
+            log("Runmap was requested, running the map...")
             ceres.runMap(artifactPath)
         end
     end
@@ -310,7 +318,7 @@ end
 function ceres.runMap(path)
     local _, errorMsg = ceres.runWarcraft(path, ceres.runConfig)
     if errorMsg ~= nil then
-        print("WARN: Running the map failed.")
-        print(errorMsg)
+        log("WARN: Running the map failed.")
+        log(errorMsg)
     end
 end

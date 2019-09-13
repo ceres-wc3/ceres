@@ -1,4 +1,5 @@
 --[[ ceres map header start ]]
+do
     local ceres = {
     }
 
@@ -81,4 +82,20 @@
             error("module not found")
         end
     end
+
+    function ceres.init()
+        ceres.__oldMain = main
+        ceres.__oldConfig = config
+    
+        function main()
+            __ceresMain()
+        end
+    
+        function config()
+            __ceresConfig()
+        end
+    
+        ceres.catch(require("main"))
+    end
+end
 --[[ ceres map header end ]]
