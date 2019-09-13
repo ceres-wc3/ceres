@@ -6,7 +6,7 @@ type AnyError = Box<dyn Error + Sync + Send + 'static>;
 
 fn main() {
     let matches = clap_app!(Ceres =>
-        (version: "0.2.1")
+        (version: "0.2.2")
         (author: "mori <mori@reu.moe>")
         (about: "Ceres is a build tool, script compiler and map preprocessor for WC3 Lua maps.")
         (@subcommand build =>
