@@ -1,7 +1,7 @@
 pub mod read {
     use byteorder::{ReadBytesExt, LE, BE};
 
-    use crate::object::{ObjectStore, Object, Field, Value};
+    use crate::object::{ObjectStore, Object, Value};
     use crate::{ObjectId, ObjectKind};
     use crate::error::*;
 
@@ -30,27 +30,28 @@ pub mod read {
 
     fn read_field(
         source: &mut &[u8],
+        object: &mut Object,
         uses_extra_ints: bool,
-    ) -> Result<(ObjectId, Field), ObjParseError> {
+    ) -> Result<(), ObjParseError> {
         let field_id = source.read_u32::<BE>().map(ObjectId::new)?;
         let field_type = source.read_u32::<LE>()?;
 
         let field = if !uses_extra_ints {
             let value = read_value(source, field_type)?;
 
-            Field::simple(value)
+            object.add_simple_field(field_id, value);
         } else {
             let level = source.read_u32::<LE>()?;
             let data_id = source.read_u32::<LE>()?;
             let value = read_value(source, field_type)?;
 
-            Field::data(value, (data_id) as u8, level)
+            object.add_data_field(field_id, level, data_id as u8, value);
         };
 
         // read trailing int
         source.read_u32::<LE>()?;
 
-        Ok((field_id, field))
+        Ok(())
     }
 
     fn is_type_with_data(kind: ObjectKind) -> bool {
@@ -79,16 +80,7 @@ pub mod read {
 
             let mod_amount = source.read_u32::<LE>()?;
             for _ in 0..mod_amount {
-                let result = read_field(source, is_type_with_data(kind));
-
-                match result {
-                    Err(err) => {
-                        return Err(err);
-                    }
-                    Ok((field_id, field)) => {
-                        object.set_field(field_id, field);
-                    }
-                }
+                read_field(source, &mut object, is_type_with_data(kind))?;
             }
 
             objects.insert_object(object);

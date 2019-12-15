@@ -20,7 +20,7 @@ new_key_type! {
 }
 
 #[derive(Debug, Serialize, Deserialize)]
-pub struct Field {
+pub struct FieldDesc {
     pub id:        ObjectId,
     pub index:     i8,
     pub variant:   FieldVariant,
@@ -116,7 +116,7 @@ fn read_basic_info<'src>(row: &slk::Row<'src>, legend: &slk::Legend<'src>) -> Ba
 pub struct MetadataStore {
     // primary store for the fields
     // other collections in this struct hold references to FieldKeys returned by this
-    fields: SlotMap<FieldKey, Field>,
+    fields: SlotMap<FieldKey, FieldDesc>,
     // for fields that are only present on certain objects (namely, ability Data fields),
     // this holds the association between objects and fields that are available only on them
     objects_with_data: HashMap<ObjectId, Vec<ObjectId>>,
@@ -130,7 +130,7 @@ pub struct MetadataStore {
 }
 
 impl MetadataStore {
-    fn add_field(&mut self, field: Field) {
+    fn add_field(&mut self, field: FieldDesc) {
         let id = field.id;
         let name = field.variant.name().to_string();
         let key = self.fields.insert(field);
@@ -165,7 +165,7 @@ impl MetadataStore {
             }
         };
 
-        self.add_field(Field {
+        self.add_field(FieldDesc {
             id: basic_info.field_id,
             index: basic_info.index,
             value_ty: basic_info.value_ty,
@@ -194,7 +194,7 @@ impl MetadataStore {
             name: basic_info.field_name.clone(),
         };
 
-        self.add_field(Field {
+        self.add_field(FieldDesc {
             id: basic_info.field_id,
             index: basic_info.index,
             value_ty: basic_info.value_ty,
@@ -250,7 +250,7 @@ impl MetadataStore {
             list
         });
 
-        self.add_field(Field {
+        self.add_field(FieldDesc {
             id: basic_info.field_id,
             value_ty: basic_info.value_ty,
             variant,
@@ -260,7 +260,7 @@ impl MetadataStore {
         });
     }
 
-    fn find_data_field(&self, object_id: ObjectId, data_id: u8) -> Option<&Field> {
+    fn find_data_field(&self, object_id: ObjectId, data_id: u8) -> Option<&FieldDesc> {
         self.objects_with_data.get(&object_id).and_then(|v| {
             self.find_field(
                 v.iter().filter_map(|id| self.ids_to_keys.get(id)).copied(),
@@ -272,19 +272,19 @@ impl MetadataStore {
         })
     }
 
-    fn find_named_field<F>(&self, name: &str, closure: F) -> Option<&Field>
+    fn find_named_field<F>(&self, name: &str, closure: F) -> Option<&FieldDesc>
     where
-        F: FnMut(&Field) -> bool,
+        F: FnMut(&FieldDesc) -> bool,
     {
         self.names_to_keys
             .get(name)
             .and_then(|v| self.find_field(v.iter().copied(), closure))
     }
 
-    fn find_field<I, F>(&self, iter: I, mut closure: F) -> Option<&Field>
+    fn find_field<I, F>(&self, iter: I, mut closure: F) -> Option<&FieldDesc>
     where
         I: Iterator<Item = FieldKey>,
-        F: FnMut(&Field) -> bool,
+        F: FnMut(&FieldDesc) -> bool,
     {
         iter.filter_map(|k| self.fields.get(k)).find(|f| closure(f))
     }
@@ -296,7 +296,7 @@ impl MetadataStore {
         &self,
         field_name: &str,
         object: &Object,
-    ) -> Option<(&Field, Option<u32>)> {
+    ) -> Option<(&FieldDesc, Option<u32>)> {
         let object_kind = object.kind();
         let object_id = object.id();
         self.find_named_field(&field_name, |f| f.kind.contains(object_kind))
@@ -327,14 +327,14 @@ impl MetadataStore {
         field_name: &str,
         object: &Object,
         index: i8,
-    ) -> Option<&Field> {
+    ) -> Option<&FieldDesc> {
         let object_kind = object.kind();
         self.find_named_field(&field_name, |f| {
             f.kind.contains(object_kind) && (f.index == index || f.index == -1)
         })
     }
 
-    pub fn field_by_id(&self, id: ObjectId) -> Option<&Field> {
+    pub fn field_by_id(&self, id: ObjectId) -> Option<&FieldDesc> {
         let field_key = self.ids_to_keys.get(&id)?;
         self.fields.get(*field_key)
     }
@@ -372,7 +372,7 @@ pub fn read_metadata_dir<P: AsRef<Path>>(path: P) -> MetadataStore {
     });
 
     read_metadata_file(path.join("doodads/doodadmetadata.slk"), |row, legend| {
-        metadata.insert_basic_field(row, legend, ObjectKind::MISC);
+        metadata.insert_basic_field(row, legend, ObjectKind::DOODAD);
     });
 
     metadata

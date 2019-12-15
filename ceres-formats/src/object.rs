@@ -11,10 +11,8 @@ use crate::metadata::MetadataStore;
 use crate::metadata::FieldVariant;
 use crate::parser::profile;
 use crate::parser::slk;
-use crate::parser::slk::read_row_num;
-use crate::parser::slk::read_row_str;
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, PartialEq, Serialize, Deserialize)]
 pub enum Value {
     Str(String),
     Int(i32),
@@ -34,37 +32,22 @@ impl Value {
     }
 }
 
-#[derive(Debug, Serialize, Deserialize)]
-pub enum Field {
-    Simple {
-        value: Value,
-    },
-    Data {
-        data_id: u8,
-        level:   u32,
-        value:   Value,
-    },
+#[derive(Debug, PartialEq, Serialize, Deserialize)]
+pub struct DataValue {
+    pub data_id: u8,
+    pub level:   u32,
+    pub value:   Value,
 }
 
-impl Field {
-    pub fn simple(value: Value) -> Field {
-        Field::Simple { value }
-    }
-
-    pub fn data(value: Value, data_id: u8, level: u32) -> Field {
-        Field::Data {
-            value,
-            level,
-            data_id,
-        }
-    }
-
-    pub fn value(&self) -> &Value {
-        match self {
-            Field::Simple { value } => value,
-            Field::Data { value, .. } => value,
-        }
-    }
+#[derive(Debug, PartialEq, Serialize, Deserialize)]
+pub enum FieldKind {
+    Simple { value: Value },
+    Data { values: Vec<DataValue> },
+}
+#[derive(Debug, PartialEq, Serialize, Deserialize)]
+pub struct Field {
+    pub id:   ObjectId,
+    pub kind: FieldKind,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -110,8 +93,62 @@ impl Object {
         self.fields.get(&id)
     }
 
-    pub fn set_field(&mut self, id: ObjectId, field: Field) {
+    pub fn add_simple_field(&mut self, id: ObjectId, value: Value) {
+        let kind = FieldKind::Simple { value };
+
+        let field = Field { id, kind };
+
         self.fields.insert(id, field);
+    }
+
+    pub fn add_level_field(&mut self, id: ObjectId, level: u32, value: Value) {
+        let field = self.fields.entry(id).or_insert_with(|| Field {
+            id,
+            kind: FieldKind::Data {
+                values: Default::default(),
+            },
+        });
+
+        match &mut field.kind {
+            FieldKind::Simple { .. } => eprintln!(
+                "tried to insert data field {} for object {}, but a simple field {} already exists",
+                id, self.id, field.id
+            ),
+            FieldKind::Data { values } => {
+                let data = DataValue {
+                    data_id: 0,
+                    level,
+                    value,
+                };
+
+                values.push(data);
+            }
+        }
+    }
+
+    pub fn add_data_field(&mut self, id: ObjectId, level: u32, data: u8, value: Value) {
+        let field = self.fields.entry(id).or_insert_with(|| Field {
+            id,
+            kind: FieldKind::Data {
+                values: Default::default(),
+            },
+        });
+
+        match &mut field.kind {
+            FieldKind::Simple { .. } => eprintln!(
+                "tried to insert data field {} for object {}, but a simple field {} already exists",
+                id, self.id, field.id
+            ),
+            FieldKind::Data { values } => {
+                let data = DataValue {
+                    data_id: data,
+                    level,
+                    value,
+                };
+
+                values.push(data);
+            }
+        }
     }
 }
 
@@ -136,14 +173,22 @@ fn process_slk_field(
 ) -> Option<()> {
     let (field_meta, level) = metadata.query_slk_field(name, &object)?;
     let value = Value::from_str_and_ty(&field_meta.value_ty, value.as_inner()?)?;
+    let field_id = field_meta.id;
 
-    let field = match field_meta.variant {
-        FieldVariant::Normal { .. } => Field::simple(value),
-        FieldVariant::Leveled { .. } => Field::data(value, 0, level.unwrap()),
-        FieldVariant::Data { id } => Field::data(value, id, level.unwrap()),
-    };
-
-    object.set_field(field_meta.id, field);
+    match field_meta.variant {
+        FieldVariant::Normal { .. } => object.add_simple_field(field_id, value),
+        FieldVariant::Leveled { .. } => object.add_level_field(
+            field_id,
+            level.expect("field must have level specified"),
+            value,
+        ),
+        FieldVariant::Data { id } => object.add_data_field(
+            field_id,
+            level.expect("field must have level specified"),
+            id,
+            value,
+        ),
+    }
 
     Some(())
 }
@@ -157,14 +202,13 @@ fn process_func_field(
 ) -> Option<()> {
     let field_meta = metadata.query_profile_field(key, &object, index)?;
     let value = Value::from_str_and_ty(&field_meta.value_ty, value)?;
+    let field_id = field_meta.id;
 
-    let field = match field_meta.variant {
-        FieldVariant::Normal { .. } => Field::simple(value),
-        FieldVariant::Leveled { .. } => Field::data(value, 0, 0),
-        FieldVariant::Data { id } => Field::data(value, id, 0),
-    };
-
-    object.set_field(field_meta.id, field);
+    match field_meta.variant {
+        FieldVariant::Normal { .. } => object.add_simple_field(field_id, value),
+        FieldVariant::Leveled { .. } => object.add_level_field(field_id, 0, value),
+        FieldVariant::Data { id } => object.add_data_field(field_id, 0, id, value),
+    }
 
     Some(())
 }
