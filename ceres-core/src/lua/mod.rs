@@ -24,7 +24,7 @@ struct ProjectLayout {
     #[serde(rename = "libDirectory")]
     lib_directory: String,
     #[serde(rename = "targetDirectory")]
-    target_directory: String
+    target_directory: String,
 }
 
 fn send_layout(port: Option<u16>, layout: LuaTable) {
@@ -78,10 +78,11 @@ pub fn setup_ceres_environ(
     ceres_table
         .set(
             "sendLayout",
-            ctx.create_function(move |_, layout: (LuaTable)| {
+            ctx.create_function(move |_, layout: LuaTable| {
                 send_layout(extension_port, layout);
                 Ok(())
-            }).unwrap(),
+            })
+            .unwrap(),
         )
         .unwrap();
 

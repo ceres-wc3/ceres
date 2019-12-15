@@ -66,8 +66,7 @@ impl ProjectModuleProvider {
 
                 let module_path = &module_path[..(module_path.len() - 4)];
 
-                modules
-                    .insert(module_path.into(), entry.into_path());
+                modules.insert(module_path.into(), entry.into_path());
             }
         }
     }

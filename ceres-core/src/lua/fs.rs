@@ -136,7 +136,7 @@ fn get_writefile_luafn(ctx: LuaContext) -> LuaFunction {
 }
 
 fn get_readfile_luafn(ctx: LuaContext) -> LuaFunction {
-    ctx.create_function(|ctx, path: (String)| {
+    ctx.create_function(|ctx, path: String| {
         let result = lua_read_file(ctx, &path);
 
         Ok(lua_wrap_result(ctx, result))
@@ -145,7 +145,7 @@ fn get_readfile_luafn(ctx: LuaContext) -> LuaFunction {
 }
 
 fn get_readdir_luafn(ctx: LuaContext) -> LuaFunction {
-    ctx.create_function(|ctx, path: (String)| {
+    ctx.create_function(|ctx, path: String| {
         let result = lua_read_dir(ctx, &path);
 
         Ok(lua_wrap_result(ctx, result))
@@ -154,7 +154,7 @@ fn get_readdir_luafn(ctx: LuaContext) -> LuaFunction {
 }
 
 fn get_isdir_luafn(ctx: LuaContext) -> LuaFunction {
-    ctx.create_function(|_, path: (String)| {
+    ctx.create_function(|_, path: String| {
         let path: PathBuf = path.into();
 
         Ok(path.is_dir())
@@ -163,7 +163,7 @@ fn get_isdir_luafn(ctx: LuaContext) -> LuaFunction {
 }
 
 fn get_isfile_luafn(ctx: LuaContext) -> LuaFunction {
-    ctx.create_function(|_, path: (String)| {
+    ctx.create_function(|_, path: String| {
         let path: PathBuf = path.into();
 
         Ok(path.is_dir())
@@ -172,7 +172,7 @@ fn get_isfile_luafn(ctx: LuaContext) -> LuaFunction {
 }
 
 fn get_exists_luafn(ctx: LuaContext) -> LuaFunction {
-    ctx.create_function(|_, path: (String)| {
+    ctx.create_function(|_, path: String| {
         let path: PathBuf = path.into();
 
         Ok(path.exists())
@@ -181,7 +181,7 @@ fn get_exists_luafn(ctx: LuaContext) -> LuaFunction {
 }
 
 fn get_absolutize_luafn(ctx: LuaContext) -> LuaFunction {
-    ctx.create_function(|ctx, path: (String)| {
+    ctx.create_function(|ctx, path: String| {
         let result = lua_absolutize_path(&path);
 
         Ok(lua_wrap_result(ctx, result))

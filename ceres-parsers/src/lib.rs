@@ -1,3 +1,3 @@
-#![feature(custom_attribute)]
+#![feature(register_attr, register_tool)]
 
 pub mod lua;

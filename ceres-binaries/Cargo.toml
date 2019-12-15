@@ -6,10 +6,15 @@ edition = "2018"
 
 [dependencies]
 ceres-parsers = {path = "../ceres-parsers"}
+ceres-formats = {path = "../ceres-formats"}
 ceres-core = {path = "../ceres-core"}
 
-pest = "2.1.1"
+serde = "1.0.103"
+pest = "2.1.2"
 rlua = "0.16.3"
+ron = "0.5.1"
+bincode = "1.2.1"
+anyhow = "1.0.25"
 
 [dependencies.clap]
 version = "2.33.0"

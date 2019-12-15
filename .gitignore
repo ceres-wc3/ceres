@@ -7,6 +7,7 @@
 !/ceres-core
 !/ceres-mpq
 !/ceres-parsers
+!/ceres-formats
 !/ci
 !/storm-sys
 !Cargo.lock

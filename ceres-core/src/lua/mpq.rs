@@ -28,7 +28,7 @@ impl LuaUserData for Viewer {
     where
         T: LuaUserDataMethods<'lua, Self>,
     {
-        methods.add_method_mut("readFile", |ctx, obj, path: (LuaString)| {
+        methods.add_method_mut("readFile", |ctx, obj, path: LuaString| {
             let result =
                 readflow_readfile(&mut obj.archive, path).map(|s| ctx.create_string(&s).unwrap());
 
@@ -37,7 +37,7 @@ impl LuaUserData for Viewer {
 
         methods.add_method_mut("files", |_, obj, _: ()| Ok(obj.archive.files()));
 
-        methods.add_method_mut("extractTo", |ctx, obj, path: (LuaString)| {
+        methods.add_method_mut("extractTo", |ctx, obj, path: LuaString| {
             let result = readflow_extract(&mut obj.archive, path);
 
             Ok(lua_wrap_result(ctx, result))
@@ -91,7 +91,7 @@ impl LuaUserData for Builder {
             },
         );
 
-        methods.add_method_mut("write", |ctx, obj, path: (LuaString)| {
+        methods.add_method_mut("write", |ctx, obj, path: LuaString| {
             let result = writeflow_write(obj, path);
 
             Ok(lua_wrap_result(ctx, result))
@@ -227,6 +227,8 @@ fn writeflow_adddir(
         builder
             .creator
             .add_file(relative_path.to_str().unwrap(), contents.unwrap(), options);
+
+        eprintln!("Added file {}", relative_path.to_str().unwrap());
     }
 
     Ok(true)
@@ -281,7 +283,7 @@ fn writeflow_new() -> Result<Builder, AnyError> {
 }
 
 fn get_mpqopen_luafn(ctx: LuaContext) -> LuaFunction {
-    ctx.create_function(|ctx: LuaContext, path: (String)| {
+    ctx.create_function(|ctx: LuaContext, path: String| {
         let result = readflow_open(&path);
 
         Ok(lua_wrap_result(ctx, result))

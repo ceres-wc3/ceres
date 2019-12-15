@@ -3,5 +3,6 @@
 members = [
     "ceres-binaries",
     "ceres-parsers",
-    "ceres-core"
+    "ceres-core",
+    "ceres-formats"
 ]

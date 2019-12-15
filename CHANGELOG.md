@@ -1,3 +1,7 @@
+# 0.2.2
+
+* Fixed various issues which broke Ceres
+
 # 0.2.1
 
 * Fixed a bug where the Lua compiler would ignore `libDirectory`
