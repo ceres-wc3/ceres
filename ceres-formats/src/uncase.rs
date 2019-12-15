@@ -3,7 +3,7 @@ use std::borrow::Borrow;
 use serde::{Serialize, Deserialize};
 use unicase::UniCase;
 
-#[derive(Debug, Hash, PartialEq, Eq, Deserialize, Serialize)]
+#[derive(Debug, Hash, PartialEq, Eq, PartialOrd, Ord, Deserialize, Serialize)]
 pub struct Uncase {
     #[serde(with = "unicase_serde::unicase")]
     inner: UniCase<String>,

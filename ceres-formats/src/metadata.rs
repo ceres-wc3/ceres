@@ -1,5 +1,6 @@
 use std::fs;
 use std::path::Path;
+use std::collections::BTreeMap;
 use std::collections::HashMap;
 
 use serde::{Serialize, Deserialize};
@@ -74,16 +75,16 @@ fn split_by_digits(input: &str) -> Option<(&str, &str)> {
 
 fn data_char_to_id(input: u8) -> u8 {
     match input {
-        b'a' => 1,
-        b'b' => 2,
-        b'c' => 3,
-        b'd' => 4,
-        b'e' => 5,
-        b'f' => 6,
-        b'g' => 7,
-        b'h' => 8,
-        b'i' => 9,
-        b'j' => 10,
+        b'a' | b'A' => 1,
+        b'b' | b'B' => 2,
+        b'c' | b'C' => 3,
+        b'd' | b'D' => 4,
+        b'e' | b'E' => 5,
+        b'f' | b'F' => 6,
+        b'g' | b'G' => 7,
+        b'h' | b'H' => 8,
+        b'i' | b'I' => 9,
+        b'j' | b'J' => 10,
         _ => panic!("unknown data field id"),
     }
 }
@@ -125,7 +126,7 @@ pub struct MetadataStore {
     // multiple fields may be mapped to the same name,
     // namely if they belong to different objects or have different indices
     // so additional filtering must be performed
-    names_to_keys: HashMap<Uncase, Vec<FieldKey>>,
+    names_to_keys: BTreeMap<Uncase, Vec<FieldKey>>,
 }
 
 impl MetadataStore {
@@ -367,6 +368,10 @@ pub fn read_metadata_dir<P: AsRef<Path>>(path: P) -> MetadataStore {
     );
 
     read_metadata_file(path.join("units/miscmetadata.slk"), |row, legend| {
+        metadata.insert_basic_field(row, legend, ObjectKind::MISC);
+    });
+
+    read_metadata_file(path.join("doodads/doodadmetadata.slk"), |row, legend| {
         metadata.insert_basic_field(row, legend, ObjectKind::MISC);
     });
 

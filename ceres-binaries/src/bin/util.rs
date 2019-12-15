@@ -8,6 +8,8 @@ use anyhow::Result;
 use ceres_formats::*;
 
 fn main() {
+    dotenv::dotenv().ok();
+
     let matches = clap_app!(Util =>
         (version: "0.0.0")
         (author: "mori <mori@reu.moe>")
@@ -22,6 +24,9 @@ fn main() {
             (@arg type: --type +takes_value)
             (@arg format: --format -f +takes_value)
             (@arg FILE: +required +takes_value)
+        )
+        (@subcommand dbg =>
+            (about: "dbg")
         )
     )
     .get_matches();
@@ -94,7 +99,10 @@ fn run(matches: clap::ArgMatches) -> Result<()> {
         )?;
 
         serialize_obj(&obj, format);
+    } else if let Some(arg) = matches.subcommand_matches("dbg") {
+        dbg!(meta.field_by_id(ObjectId::from_bytes(b"amac").unwrap()));
     }
+
 
     Ok(())
 }

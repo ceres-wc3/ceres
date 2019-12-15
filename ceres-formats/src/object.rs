@@ -274,6 +274,7 @@ pub fn read_data_dir<P: AsRef<Path>>(path: P, metadata: &MetadataStore) -> Objec
         (ObjectKind::BUFF, "units/abilitybuffdata.slk"),
         (ObjectKind::DESTRUCTABLE, "units/destructabledata.slk"),
         (ObjectKind::UPGRADE, "units/upgradedata.slk"),
+        (ObjectKind::DOODAD, "doodads/doodads.slk"),
         (ObjectKind::empty(), "units/unitbalance.slk"),
         (ObjectKind::empty(), "units/unitabilities.slk"),
         (ObjectKind::empty(), "units/unitweapons.slk"),

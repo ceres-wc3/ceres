@@ -6,3 +6,7 @@ members = [
     "ceres-core",
     "ceres-formats"
 ]
+
+
+[profile.dev]
+opt-level = 1

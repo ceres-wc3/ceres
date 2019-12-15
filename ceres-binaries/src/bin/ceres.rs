@@ -5,6 +5,8 @@ use clap::clap_app;
 type AnyError = Box<dyn Error + Sync + Send + 'static>;
 
 fn main() {
+    dotenv::dotenv().ok();
+
     let matches = clap_app!(Ceres =>
         (version: "0.2.2")
         (author: "mori <mori@reu.moe>")
