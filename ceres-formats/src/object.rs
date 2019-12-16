@@ -1,14 +1,16 @@
 use std::collections::BTreeMap;
+use std::fs;
 use std::iter::Extend;
 use std::path::Path;
-use std::fs;
+use std::rc::Rc;
+use std::cell::{RefCell, Ref};
 
-use serde::{Serialize, Deserialize};
+use serde::{Deserialize, Serialize};
 
+use crate::metadata::FieldVariant;
+use crate::metadata::MetadataStore;
 use crate::ObjectId;
 use crate::ObjectKind;
-use crate::metadata::MetadataStore;
-use crate::metadata::FieldVariant;
 use crate::parser::profile;
 use crate::parser::slk;
 
@@ -18,7 +20,6 @@ pub enum Value {
     Int(i32),
     Real(f32),
     Unreal(f32),
-    Empty,
 }
 
 impl Value {
@@ -29,6 +30,15 @@ impl Value {
             "int" | "bool" => Value::Int(value.parse().ok()?),
             _ => Value::Str(value.into()),
         })
+    }
+
+    pub fn type_id(&self) -> u32 {
+        match self {
+            Value::Int(..) => 0,
+            Value::Real(..) => 1,
+            Value::Unreal(..) => 2,
+            Value::Str(..) => 3,
+        }
     }
 }
 
@@ -44,6 +54,7 @@ pub enum FieldKind {
     Simple { value: Value },
     Data { values: Vec<DataValue> },
 }
+
 #[derive(Debug, PartialEq, Serialize, Deserialize)]
 pub struct Field {
     pub id:   ObjectId,
@@ -81,6 +92,10 @@ impl Object {
         self.id
     }
 
+    pub fn parent_id(&self) -> Option<ObjectId> {
+        self.parent_id
+    }
+
     pub fn kind(&self) -> ObjectKind {
         self.kind
     }
@@ -93,15 +108,13 @@ impl Object {
         self.fields.get(&id)
     }
 
-    pub fn add_simple_field(&mut self, id: ObjectId, value: Value) {
+    pub fn set_simple_field(&mut self, id: ObjectId, value: Value) {
         let kind = FieldKind::Simple { value };
-
         let field = Field { id, kind };
-
         self.fields.insert(id, field);
     }
 
-    pub fn add_level_field(&mut self, id: ObjectId, level: u32, value: Value) {
+    pub fn set_level_field(&mut self, id: ObjectId, level: u32, value: Value) {
         let field = self.fields.entry(id).or_insert_with(|| Field {
             id,
             kind: FieldKind::Data {
@@ -115,18 +128,25 @@ impl Object {
                 id, self.id, field.id
             ),
             FieldKind::Data { values } => {
-                let data = DataValue {
+                let new_value = DataValue {
                     data_id: 0,
                     level,
                     value,
                 };
 
-                values.push(data);
+                if let Some(value) = values
+                    .iter_mut()
+                    .find(|dv| dv.level == level && dv.data_id == 0)
+                {
+                    *value = new_value;
+                } else {
+                    values.push(new_value);
+                }
             }
         }
     }
 
-    pub fn add_data_field(&mut self, id: ObjectId, level: u32, data: u8, value: Value) {
+    pub fn set_data_field(&mut self, id: ObjectId, level: u32, data: u8, value: Value) {
         let field = self.fields.entry(id).or_insert_with(|| Field {
             id,
             kind: FieldKind::Data {
@@ -140,13 +160,20 @@ impl Object {
                 id, self.id, field.id
             ),
             FieldKind::Data { values } => {
-                let data = DataValue {
+                let new_value = DataValue {
                     data_id: data,
                     level,
                     value,
                 };
 
-                values.push(data);
+                if let Some(value) = values
+                    .iter_mut()
+                    .find(|dv| dv.level == level && dv.data_id == data)
+                {
+                    *value = new_value;
+                } else {
+                    values.push(new_value);
+                }
             }
         }
     }
@@ -154,7 +181,7 @@ impl Object {
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct ObjectStore {
-    objects: BTreeMap<ObjectId, Object>,
+    objects: BTreeMap<ObjectId, Rc<RefCell<Object>>>,
 }
 
 impl Default for ObjectStore {
@@ -176,13 +203,13 @@ fn process_slk_field(
     let field_id = field_meta.id;
 
     match field_meta.variant {
-        FieldVariant::Normal { .. } => object.add_simple_field(field_id, value),
-        FieldVariant::Leveled { .. } => object.add_level_field(
+        FieldVariant::Normal { .. } => object.set_simple_field(field_id, value),
+        FieldVariant::Leveled { .. } => object.set_level_field(
             field_id,
             level.expect("field must have level specified"),
             value,
         ),
-        FieldVariant::Data { id } => object.add_data_field(
+        FieldVariant::Data { id } => object.set_data_field(
             field_id,
             level.expect("field must have level specified"),
             id,
@@ -205,25 +232,25 @@ fn process_func_field(
     let field_id = field_meta.id;
 
     match field_meta.variant {
-        FieldVariant::Normal { .. } => object.add_simple_field(field_id, value),
-        FieldVariant::Leveled { .. } => object.add_level_field(field_id, 0, value),
-        FieldVariant::Data { id } => object.add_data_field(field_id, 0, id, value),
+        FieldVariant::Normal { .. } => object.set_simple_field(field_id, value),
+        FieldVariant::Leveled { .. } => object.set_level_field(field_id, 0, value),
+        FieldVariant::Data { id } => object.set_data_field(field_id, 0, id, value),
     }
 
     Some(())
 }
 
 impl ObjectStore {
-    pub fn objects(&self) -> impl Iterator<Item = &Object> {
+    pub fn objects(&self) -> impl Iterator<Item = &Rc<RefCell<Object>>> {
         self.objects.values()
     }
 
-    pub fn object(&self, id: ObjectId) -> Option<&Object> {
+    pub fn object(&self, id: ObjectId) -> Option<&Rc<RefCell<Object>>> {
         self.objects.get(&id)
     }
 
     pub fn insert_object(&mut self, object: Object) {
-        self.objects.insert(object.id, object);
+        self.objects.insert(object.id, Rc::new(RefCell::new(object)));
     }
 
     pub fn merge_with(self, mut other: ObjectStore) -> ObjectStore {
@@ -250,7 +277,7 @@ impl ObjectStore {
         } else {
             self.objects
                 .entry(id)
-                .or_insert_with(|| Object::new(id, kind))
+                .or_insert_with(|| Rc::new(RefCell::new(Object::new(id, kind))))
         };
 
         for (value, name) in row
@@ -258,7 +285,7 @@ impl ObjectStore {
             .iter()
             .filter_map(|cell| legend.name_by_cell(&cell).map(|name| (cell.value(), name)))
         {
-            process_slk_field(object, value, name, metadata);
+            process_slk_field(&mut object.borrow_mut(), value, name, metadata);
         }
 
         Some(())
@@ -270,7 +297,7 @@ impl ObjectStore {
 
         for (key, values) in entry.values {
             for (index, value) in values.split(',').enumerate() {
-                process_func_field(object, key, value, index as i8, metadata);
+                process_func_field(&mut object.borrow_mut(), key, value, index as i8, metadata);
             }
         }
 

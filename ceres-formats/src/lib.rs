@@ -6,7 +6,6 @@ pub mod parser {
 }
 
 pub mod error;
-pub mod test;
 pub mod metadata;
 pub mod object;
 pub mod uncase;

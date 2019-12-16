@@ -25,6 +25,10 @@ fn main() {
             (@arg format: --format -f +takes_value)
             (@arg FILE: +required +takes_value)
         )
+        (@subcommand rwobj =>
+            (about: "Parse and write obj file")
+            (@arg FILE: +required +takes_value)
+        )
         (@subcommand dbg =>
             (about: "dbg")
         )
@@ -99,10 +103,23 @@ fn run(matches: clap::ArgMatches) -> Result<()> {
         )?;
 
         serialize_obj(&obj, format);
-    } else if let Some(arg) = matches.subcommand_matches("dbg") {
+    } else if let Some(_arg) = matches.subcommand_matches("dbg") {
         dbg!(meta.field_by_id(ObjectId::from_bytes(b"amac").unwrap()));
-    }
+    } else if let Some(arg) = matches.subcommand_matches("rwobj") {
+        let file_path: PathBuf = arg.value_of("FILE").unwrap().into();
+        let kind = file_path.extension().unwrap().to_string_lossy();
 
+        let obj = parser::w3obj::read::read_object_file(
+            &fs::read(&file_path)?,
+            ObjectKind::from_ext(&kind),
+        )?;
+
+        parser::w3obj::write::write_object_file(
+            std::io::stdout(),
+            &obj,
+            ObjectKind::from_ext(&kind),
+        )?;
+    }
 
     Ok(())
 }

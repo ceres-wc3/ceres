@@ -123,6 +123,7 @@ dependencies = [
 name = "ceres-core"
 version = "0.1.0-INTERNAL"
 dependencies = [
+ "ceres-formats 0.1.0-INTERNAL",
  "ceres-mpq 0.1.6-alpha.0",
  "ceres-parsers 0.1.0-INTERNAL",
  "err-derive 0.2.1 (registry+https://github.com/rust-lang/crates.io-index)",
