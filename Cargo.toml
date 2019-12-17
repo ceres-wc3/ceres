@@ -4,9 +4,12 @@ members = [
     "ceres-binaries",
     "ceres-parsers",
     "ceres-core",
-    "ceres-formats"
+    "ceres-formats",
+    "ceres-data"
 ]
-
 
 [profile.dev]
 opt-level = 1
+
+[patch.crates-io]
+rlua = { path = "../rlua-st" }

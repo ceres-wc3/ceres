@@ -2,14 +2,14 @@ use rlua::prelude::*;
 
 use crate::compiler;
 use crate::lua::macros;
-use crate::lua::util::lua_wrap_result;
+use crate::lua::util::wrap_result;
 use crate::error::AnyError;
 
 pub fn get_compile_script_luafn(ctx: LuaContext) -> LuaFunction {
     ctx.create_function(|ctx, args: LuaTable| {
         let result = compile_script(ctx, args);
 
-        Ok(lua_wrap_result(ctx, result))
+        Ok(wrap_result(ctx, result))
     })
     .unwrap()
 }

@@ -4,6 +4,7 @@ use std::iter::Extend;
 use std::path::Path;
 use std::rc::Rc;
 use std::cell::{RefCell, Ref};
+use std::ops::Deref;
 
 use serde::{Deserialize, Serialize};
 
@@ -14,7 +15,7 @@ use crate::ObjectKind;
 use crate::parser::profile;
 use crate::parser::slk;
 
-#[derive(Debug, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub enum Value {
     Str(String),
     Int(i32),
@@ -42,26 +43,26 @@ impl Value {
     }
 }
 
-#[derive(Debug, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct DataValue {
     pub data_id: u8,
     pub level:   u32,
     pub value:   Value,
 }
 
-#[derive(Debug, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub enum FieldKind {
     Simple { value: Value },
     Data { values: Vec<DataValue> },
 }
 
-#[derive(Debug, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct Field {
     pub id:   ObjectId,
     pub kind: FieldKind,
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Object {
     kind:      ObjectKind,
     id:        ObjectId,
@@ -184,9 +185,22 @@ pub struct ObjectStore {
     objects: BTreeMap<ObjectId, Rc<RefCell<Object>>>,
 }
 
+#[derive(Debug, Serialize, Deserialize)]
+pub struct ObjectStoreStatic {
+    objects: BTreeMap<ObjectId, Object>
+}
+
 impl Default for ObjectStore {
     fn default() -> ObjectStore {
         ObjectStore {
+            objects: Default::default(),
+        }
+    }
+}
+
+impl Default for ObjectStoreStatic {
+    fn default() -> ObjectStoreStatic {
+        ObjectStoreStatic {
             objects: Default::default(),
         }
     }
@@ -305,6 +319,30 @@ impl ObjectStore {
     }
 }
 
+impl ObjectStoreStatic {
+    pub fn new(data: &ObjectStore) -> ObjectStoreStatic {
+        let mut data_static = Self::default();
+        data_static.merge_from(data);
+        data_static
+    }
+
+    fn merge_from(&mut self, data: &ObjectStore) {
+        for object in data.objects() {
+            let object = object.borrow().clone();
+
+            self.objects.insert(object.id, object);
+        }
+    }
+
+    pub fn object(&self, id: ObjectId) -> Option<&Object> {
+        self.objects.get(&id)
+    }
+
+    pub fn objects(&self) -> impl Iterator<Item=&Object> {
+        self.objects.values()
+    }
+}
+
 fn read_func_file<P: AsRef<Path>>(path: P, metadata: &MetadataStore, data: &mut ObjectStore) {
     dbg!(path.as_ref());
 
@@ -316,7 +354,7 @@ fn read_func_file<P: AsRef<Path>>(path: P, metadata: &MetadataStore, data: &mut 
     }
 }
 
-pub fn read_slk_file<P: AsRef<Path>>(
+fn read_slk_file<P: AsRef<Path>>(
     path: P,
     kind: ObjectKind,
     metadata: &MetadataStore,

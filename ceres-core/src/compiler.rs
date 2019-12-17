@@ -14,7 +14,7 @@ use itertools::Itertools;
 use ceres_parsers::lua;
 
 use crate::lua::util::evaluate_macro_args;
-use crate::lua::util::value_to_string;
+use crate::lua::util::lvalue_to_str;
 use crate::error::*;
 
 pub trait ModuleProvider {
@@ -371,7 +371,7 @@ impl<'lua, MO: ModuleProvider, MA: MacroProvider> ScriptCompiler<'lua, MO, MA> {
             arg
         };
 
-        if let Some(s) = value_to_string(value) {
+        if let Some(s) = lvalue_to_str(value) {
             compilation_data.src += &s;
         }
 

@@ -6,7 +6,7 @@ use std::fs;
 use rlua::prelude::*;
 use path_absolutize::Absolutize;
 
-use crate::lua::util::lua_wrap_result;
+use crate::lua::util::wrap_result;
 use crate::error::*;
 
 pub struct LaunchConfig {
@@ -78,7 +78,7 @@ pub fn get_runmap_luafn(ctx: LuaContext) -> LuaFunction {
     ctx.create_function(|ctx, (path, config): (LuaString, LuaTable)| {
         let result = lua_run_map(path, config);
 
-        Ok(lua_wrap_result(ctx, result))
+        Ok(wrap_result(ctx, result))
     })
     .unwrap()
 }

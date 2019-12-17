@@ -11,7 +11,7 @@ use walkdir::WalkDir;
 use crate::error::AnyError;
 use crate::error::StringError;
 use crate::error::ContextError;
-use crate::lua::util::lua_wrap_result;
+use crate::lua::util::wrap_result;
 
 type FileArchive = Archive<BufReader<fs::File>>;
 
@@ -32,7 +32,7 @@ impl LuaUserData for Viewer {
             let result =
                 readflow_readfile(&mut obj.archive, path).map(|s| ctx.create_string(&s).unwrap());
 
-            Ok(lua_wrap_result(ctx, result))
+            Ok(wrap_result(ctx, result))
         });
 
         methods.add_method_mut("files", |_, obj, _: ()| Ok(obj.archive.files()));
@@ -40,7 +40,7 @@ impl LuaUserData for Viewer {
         methods.add_method_mut("extractTo", |ctx, obj, path: LuaString| {
             let result = readflow_extract(&mut obj.archive, path);
 
-            Ok(lua_wrap_result(ctx, result))
+            Ok(wrap_result(ctx, result))
         });
     }
 }
@@ -56,7 +56,7 @@ impl LuaUserData for Builder {
                 let options = fileoptions_from_table(options);
                 let result = writeflow_addbuf(obj, path, contents, options);
 
-                Ok(lua_wrap_result(ctx, result))
+                Ok(wrap_result(ctx, result))
             },
         );
 
@@ -66,7 +66,7 @@ impl LuaUserData for Builder {
                 let options = fileoptions_from_table(options);
                 let result = writeflow_addfile(obj, archive_path, fs_path, options);
 
-                Ok(lua_wrap_result(ctx, result))
+                Ok(wrap_result(ctx, result))
             },
         );
 
@@ -76,7 +76,7 @@ impl LuaUserData for Builder {
                 let options = fileoptions_from_table(options);
                 let result = writeflow_adddir(obj, dir_path, options);
 
-                Ok(lua_wrap_result(ctx, result))
+                Ok(wrap_result(ctx, result))
             },
         );
 
@@ -87,14 +87,14 @@ impl LuaUserData for Builder {
                 let options = fileoptions_from_table(options);
                 let result = writeflow_addmpq(obj, &mut viewer.archive, options);
 
-                Ok(lua_wrap_result(ctx, result))
+                Ok(wrap_result(ctx, result))
             },
         );
 
         methods.add_method_mut("write", |ctx, obj, path: LuaString| {
             let result = writeflow_write(obj, path);
 
-            Ok(lua_wrap_result(ctx, result))
+            Ok(wrap_result(ctx, result))
         });
     }
 }
@@ -286,7 +286,7 @@ fn get_mpqopen_luafn(ctx: LuaContext) -> LuaFunction {
     ctx.create_function(|ctx: LuaContext, path: String| {
         let result = readflow_open(&path);
 
-        Ok(lua_wrap_result(ctx, result))
+        Ok(wrap_result(ctx, result))
     })
     .unwrap()
 }
@@ -295,7 +295,7 @@ fn get_mpqnew_luafn(ctx: LuaContext) -> LuaFunction {
     ctx.create_function(|ctx: LuaContext, _: ()| {
         let result = writeflow_new();
 
-        Ok(lua_wrap_result(ctx, result))
+        Ok(wrap_result(ctx, result))
     })
     .unwrap()
 }

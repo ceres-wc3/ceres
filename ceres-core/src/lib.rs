@@ -49,19 +49,16 @@ where
     let lua = Rc::new(Lua::new());
 
     let result: Result<(), LuaError> = lua.context(|ctx| {
-        // scoped so that we don't have to synchronize anything...
-        ctx.scope(|_| {
-            lua::setup_ceres_environ(
-                ctx,
-                run_mode,
-                script_args.into_iter().map(|s| s.into()).collect(),
-                extension_port,
-            );
+        lua::setup_ceres_environ(
+            ctx,
+            run_mode,
+            script_args.into_iter().map(|s| s.into()).collect(),
+            extension_port,
+        );
 
-            action(ctx).map_err(LuaError::external)?;
+        action(ctx).map_err(LuaError::external)?;
 
-            Ok(())
-        })
+        Ok(())
     });
 
     if let Err(LuaError::CallbackError { cause, .. }) = &result {

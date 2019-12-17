@@ -2,7 +2,7 @@ use std::error::Error;
 
 use clap::clap_app;
 
-type AnyError = Box<dyn Error + Sync + Send + 'static>;
+type AnyError = Box<dyn Error + 'static>;
 
 fn main() {
     dotenv::dotenv().ok();

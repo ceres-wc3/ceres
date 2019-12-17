@@ -1,8 +1,9 @@
 use rlua::prelude::*;
 use pest::iterators::Pair;
 use ceres_parsers::lua;
+use ceres_formats::ObjectId;
 
-use crate::error::AnyError;
+use crate::error::*;
 
 pub fn evaluate_macro_args<'lua>(
     ctx: LuaContext<'lua>,
@@ -28,7 +29,7 @@ pub fn is_value_stringable(value: &LuaValue) -> bool {
     }
 }
 
-pub fn value_to_string(value: LuaValue) -> Option<String> {
+pub fn lvalue_to_str(value: LuaValue) -> Option<String> {
     if !is_value_stringable(&value) {
         return None;
     }
@@ -44,13 +45,13 @@ pub fn value_to_string(value: LuaValue) -> Option<String> {
         LuaValue::String(s) => Some(format!("\"{}\"", s.to_str().unwrap())),
         LuaValue::Integer(i) => Some(i.to_string()),
         LuaValue::Number(n) => Some(n.to_string()),
-        LuaValue::Table(t) => Some(table_to_string(t)),
+        LuaValue::Table(t) => Some(ltable_to_str(t)),
 
         _ => unreachable!(),
     }
 }
 
-pub fn table_to_string(table: LuaTable) -> String {
+pub fn ltable_to_str(table: LuaTable) -> String {
     let mut out = String::new();
 
     out += "{";
@@ -66,8 +67,8 @@ pub fn table_to_string(table: LuaTable) -> String {
             continue;
         }
 
-        let ks = value_to_string(k).unwrap();
-        let vs = value_to_string(v).unwrap();
+        let ks = lvalue_to_str(k).unwrap();
+        let vs = lvalue_to_str(v).unwrap();
 
         out += "[";
         out += &ks;
@@ -81,7 +82,7 @@ pub fn table_to_string(table: LuaTable) -> String {
     out
 }
 
-pub fn lua_wrap_result<'lua, V>(ctx: LuaContext<'lua>, value: Result<V, AnyError>) -> LuaMultiValue
+pub fn wrap_result<'lua, V>(ctx: LuaContext<'lua>, value: Result<V, AnyError>) -> LuaMultiValue
 where
     V: ToLuaMulti<'lua>,
 {
@@ -94,4 +95,13 @@ where
             .to_lua_multi(ctx)
             .unwrap(),
     }
+}
+
+pub fn lvalue_to_objid(value: LuaValue) -> Result<ObjectId, AnyError> {
+    Ok(match value {
+        LuaValue::String(value) => ObjectId::from_bytes(value.as_bytes())
+            .ok_or_else(|| StringError::new("invalid byte sequence for id"))?,
+        LuaValue::Integer(value) => ObjectId::new(value as u32),
+        _ => Err(StringError::new("cannot coerce type to object id"))?,
+    })
 }

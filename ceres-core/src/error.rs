@@ -8,7 +8,7 @@ use std::error::Error;
 
 use ceres_parsers::lua;
 
-pub type AnyError = Box<dyn Error + Sync + Send + 'static>;
+pub type AnyError = Box<dyn Error + 'static>;
 
 #[derive(Error, Debug)]
 #[error(display = "{}", message)]

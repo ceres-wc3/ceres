@@ -4,9 +4,11 @@ pub mod macros;
 pub mod fs;
 pub mod mpq;
 pub mod launcher;
+pub mod object;
 
 use std::net::TcpStream;
 use std::io::Write;
+use std::rc::Rc;
 
 use rlua::prelude::*;
 use rlua_serde::from_value;
@@ -36,8 +38,8 @@ fn send_layout(port: Option<u16>, layout: LuaTable) {
     }
 }
 
-pub fn setup_ceres_environ(
-    ctx: LuaContext,
+pub fn setup_ceres_environ<'lua>(
+    ctx: LuaContext<'lua>,
     run_mode: CeresRunMode,
     script_args: Vec<String>,
     extension_port: Option<u16>,

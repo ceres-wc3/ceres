@@ -8,12 +8,12 @@ use walkdir::WalkDir;
 
 use crate::error::AnyError;
 use crate::error::IoError;
-use crate::lua::util::lua_wrap_result;
+use crate::lua::util::wrap_result;
 
 #[derive(Error, Debug)]
 pub enum LuaFileError {
     #[error(display = "Path validation attempt failed: {}", cause)]
-    PathCanonicalizationFailed { cause: IoError },
+    PathCanonizationFailed { cause: IoError },
     #[error(display = "Invalid path")]
     InvalidPath,
     #[error(display = "Not a directory")]
@@ -30,7 +30,7 @@ fn validate_path(path: &str) -> Result<PathBuf, LuaFileError> {
     let path = PathBuf::from(&path);
 
     path.absolutize().map_err(|err| {
-        dbg!(LuaFileError::PathCanonicalizationFailed {
+        dbg!(LuaFileError::PathCanonizationFailed {
             cause: IoError::new(path, err),
         })
     })
@@ -130,7 +130,7 @@ fn get_writefile_luafn(ctx: LuaContext) -> LuaFunction {
     ctx.create_function(move |ctx, (path, content): (String, LuaString)| {
         let result = lua_write_file(&path, content).map(|_| true);
 
-        Ok(lua_wrap_result(ctx, result))
+        Ok(wrap_result(ctx, result))
     })
     .unwrap()
 }
@@ -139,7 +139,7 @@ fn get_readfile_luafn(ctx: LuaContext) -> LuaFunction {
     ctx.create_function(|ctx, path: String| {
         let result = lua_read_file(ctx, &path);
 
-        Ok(lua_wrap_result(ctx, result))
+        Ok(wrap_result(ctx, result))
     })
     .unwrap()
 }
@@ -148,7 +148,7 @@ fn get_readdir_luafn(ctx: LuaContext) -> LuaFunction {
     ctx.create_function(|ctx, path: String| {
         let result = lua_read_dir(ctx, &path);
 
-        Ok(lua_wrap_result(ctx, result))
+        Ok(wrap_result(ctx, result))
     })
     .unwrap()
 }
@@ -184,7 +184,7 @@ fn get_absolutize_luafn(ctx: LuaContext) -> LuaFunction {
     ctx.create_function(|ctx, path: String| {
         let result = lua_absolutize_path(&path);
 
-        Ok(lua_wrap_result(ctx, result))
+        Ok(wrap_result(ctx, result))
     })
     .unwrap()
 }
@@ -193,7 +193,7 @@ fn get_copydir_luafn(ctx: LuaContext) -> LuaFunction {
     ctx.create_function(|ctx, (from, to): (String, String)| {
         let result = lua_copy_dir(&from, &to);
 
-        Ok(lua_wrap_result(ctx, result))
+        Ok(wrap_result(ctx, result))
     })
     .unwrap()
 }
