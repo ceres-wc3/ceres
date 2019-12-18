@@ -1,0 +1,15 @@
+[package]
+name = "ceres-data"
+version = "0.1.0-INTERNAL"
+authors = ["SamuelMoriarty <mori@reu.moe>"]
+edition = "2018"
+build = "build.rs"
+
+[dependencies]
+ceres-formats = {path = "../ceres-formats"}
+bincode = "1.2.1"
+lazy_static = "1.4.0"
+
+[build-dependencies]
+ceres-formats = {path = "../ceres-formats"}
+bincode = "1.2.1"

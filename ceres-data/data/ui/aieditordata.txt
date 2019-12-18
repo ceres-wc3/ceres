@@ -1,0 +1,150 @@
+//***************************************************************************
+[AIFunctions]
+// Defines function calls used by the AI Editor
+// Note that this section should match the format of the [TriggerCalls] section
+// in TriggerData.txt, and the strings for these functions are in TriggerStrings.txt.
+//
+// Key: Function name
+// Value 0: first game version in which this function is valid
+// Value 1: flag (0 or 1) indicating if the call can be used in events (meaningless for AI Editor)
+// Value 2: return type
+// Value 3+: argument types
+//
+
+// --- Boolean
+//   - Hero
+
+CaptainIsHome=1,0,boolean
+_CaptainIsHome_Category=TC_AI_HERO
+
+CaptainIsFull=1,0,boolean
+_CaptainIsFull_Category=TC_AI_HERO
+
+CaptainIsEmpty=1,0,boolean
+_CaptainIsEmpty_Category=TC_AI_HERO
+
+CaptainRetreating=1,0,boolean
+_CaptainRetreating_Category=TC_AI_HERO
+
+CaptainAtGoal=1,0,boolean
+_CaptainAtGoal_Category=TC_AI_HERO
+
+CaptainInCombat=1,0,boolean,aicaptaintype
+_CaptainInCombat_Defaults=AICaptainAttack
+_CaptainInCombat_Category=TC_AI_HERO
+
+//   - Misc
+
+CreepsOnMap=1,0,boolean
+_CreepsOnMap_Category=TC_AI_MISC
+
+//   - Town
+
+TownThreatened=1,0,boolean
+_TownThreatened_Category=TC_AI_TOWN
+
+TownHasMine=1,0,boolean,integer
+_TownHasMine_Category=TC_AI_TOWN
+
+TownHasHall=1,0,boolean,integer
+_TownHasHall_Category=TC_AI_TOWN
+
+ExpansionNeeded=1,0,boolean
+_ExpansionNeeded_Category=TC_AI_TOWN
+
+// --- Integer
+
+//   - Command
+
+CommandsWaiting=1,0,integer
+_CommandsWaiting_Category=TC_AI_COMMAND
+
+CheckLastCommand=1,0,integer,aicommandpop
+_CheckLastCommand_Defaults=AICommandPop
+_CheckLastCommand_Category=TC_AI_COMMAND
+
+CheckLastCommandData=1,0,integer,aicommandpop
+_CheckLastCommandData_Defaults=AICommandLeave
+_CheckLastCommandData_Category=TC_AI_COMMAND
+
+//   - Hero
+
+CaptainGroupSize=1,0,integer
+_CaptainGroupSize_Category=TC_AI_HERO
+
+CaptainReadinessHP=1,0,integer
+_CaptainReadinessHP_Category=TC_AI_HERO
+
+CaptainReadinessMa=1,0,integer
+_CaptainReadinessMa_Category=TC_AI_HERO
+
+//   - Misc
+
+CurrentAttackWave=1,0,integer
+_CurrentAttackWave_Category=TC_AI_MISC
+
+MeleeDifficulty=1,0,integer
+_MeleeDifficulty_Category=TC_AI_MISC
+
+//   - Resources
+
+GetGold=1,0,integer
+_GetGold_Category=TC_AI_RESOURCES
+
+GetWood=1,0,integer
+_GetWood_Category=TC_AI_RESOURCES
+
+GetGoldOwned=1,0,integer
+_GetGoldOwned_Category=TC_AI_RESOURCES
+
+FoodUsed=1,0,integer
+_FoodUsed_Category=TC_AI_RESOURCES
+
+TotalFoodProduced=1,0,integer
+_TotalFoodProduced_Category=TC_AI_RESOURCES
+
+GetFoodMade=1,0,integer,unitcode
+_GetFoodMade_Category=TC_AI_RESOURCES
+
+//   - Town
+
+GetMinesOwned=1,0,integer
+_GetMinesOwned_Category=TC_AI_TOWN
+
+TownWithMine=1,0,integer
+_TownWithMine_Category=TC_AI_TOWN
+
+GetNextExpansion=1,0,integer
+_GetNextExpansion_Category=TC_AI_TOWN
+
+//   - Unit
+
+GetUnitCount=1,0,integer,unitcode
+_GetUnitCount_Category=TC_AI_UNIT
+
+GetUnitCountDone=1,0,integer,unitcode
+_GetUnitCountDone_Category=TC_AI_UNIT
+
+GetTownUnitCount=1,0,integer,unitcode,integer,boolean
+_GetTownUnitCount_Defaults=_,0,false
+_GetTownUnitCount_Category=TC_AI_UNIT
+
+GetUnitGoldCost=1,0,integer,unitcode
+_GetUnitGoldCost_Category=TC_AI_UNIT
+
+GetUnitWoodCost=1,0,integer,unitcode
+_GetUnitWoodCost_Category=TC_AI_UNIT
+
+GetUnitBuildTime=1,0,integer,unitcode
+_GetUnitBuildTime_Category=TC_AI_UNIT
+
+//   - Upgrade
+
+GetUpgradeLevel=1,0,integer,techcode
+_GetUpgradeLevel_Category=TC_AI_UPGRADE
+
+GetUpgradeGoldCost=1,0,integer,techcode
+_GetUpgradeGoldCost_Category=TC_AI_UPGRADE
+
+GetUpgradeWoodCost=1,0,integer,techcode
+_GetUpgradeWoodCost_Category=TC_AI_UPGRADE
