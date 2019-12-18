@@ -78,6 +78,25 @@ impl From<u32> for ObjectId {
     }
 }
 
+#[derive(Debug, Clone, Copy, Deserialize, Serialize, PartialEq, Eq, Hash)]
+pub enum ValueType {
+    Int,
+    Real,
+    Unreal,
+    String
+}
+
+impl ValueType {
+    pub fn new(input: &str) -> ValueType {
+        match input {
+            "real" => ValueType::Real,
+            "unreal" => ValueType::Unreal,
+            "int" | "bool" => ValueType::Int,
+            _ => ValueType::String
+        }
+    }
+}
+
 bitflags! {
     #[derive(Serialize, Deserialize)]
     pub struct ObjectKind: u32 {

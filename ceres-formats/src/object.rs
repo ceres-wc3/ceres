@@ -12,24 +12,25 @@ use crate::metadata::FieldVariant;
 use crate::metadata::MetadataStore;
 use crate::ObjectId;
 use crate::ObjectKind;
+use crate::ValueType;
 use crate::parser::profile;
 use crate::parser::slk;
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub enum Value {
-    Str(String),
+    String(String),
     Int(i32),
     Real(f32),
     Unreal(f32),
 }
 
 impl Value {
-    pub fn from_str_and_ty(ty: &str, value: &str) -> Option<Self> {
+    pub fn from_str_and_ty(value: &str, ty: ValueType) -> Option<Self> {
         Some(match ty {
-            "unreal" => Value::Unreal(value.parse().ok()?),
-            "real" => Value::Real(value.parse().ok()?),
-            "int" | "bool" => Value::Int(value.parse().ok()?),
-            _ => Value::Str(value.into()),
+            ValueType::Unreal => Value::Unreal(value.parse().ok()?),
+            ValueType::Real => Value::Real(value.parse().ok()?),
+            ValueType::Int => Value::Int(value.parse().ok()?),
+            ValueType::String => Value::String(value.into()),
         })
     }
 
@@ -38,7 +39,7 @@ impl Value {
             Value::Int(..) => 0,
             Value::Real(..) => 1,
             Value::Unreal(..) => 2,
-            Value::Str(..) => 3,
+            Value::String(..) => 3,
         }
     }
 }
@@ -109,42 +110,27 @@ impl Object {
         self.fields.get(&id)
     }
 
+    pub fn simple_field(&self, id: ObjectId) -> Option<&Value> {
+        self.fields.get(&id).and_then(|field| match &field.kind {
+            FieldKind::Simple { value } => Some(value),
+            _ => None,
+        })
+    }
+
+    pub fn data_field(&self, id: ObjectId, level: u32, data: u8) -> Option<&Value> {
+        self.fields.get(&id).and_then(|field| match &field.kind {
+            FieldKind::Data { values } => values
+                .iter()
+                .find(|value| value.level == level && value.data_id == data)
+                .map(|value| &value.value),
+            _ => None,
+        })
+    }
+
     pub fn set_simple_field(&mut self, id: ObjectId, value: Value) {
         let kind = FieldKind::Simple { value };
         let field = Field { id, kind };
         self.fields.insert(id, field);
-    }
-
-    pub fn set_level_field(&mut self, id: ObjectId, level: u32, value: Value) {
-        let field = self.fields.entry(id).or_insert_with(|| Field {
-            id,
-            kind: FieldKind::Data {
-                values: Default::default(),
-            },
-        });
-
-        match &mut field.kind {
-            FieldKind::Simple { .. } => eprintln!(
-                "tried to insert data field {} for object {}, but a simple field {} already exists",
-                id, self.id, field.id
-            ),
-            FieldKind::Data { values } => {
-                let new_value = DataValue {
-                    data_id: 0,
-                    level,
-                    value,
-                };
-
-                if let Some(value) = values
-                    .iter_mut()
-                    .find(|dv| dv.level == level && dv.data_id == 0)
-                {
-                    *value = new_value;
-                } else {
-                    values.push(new_value);
-                }
-            }
-        }
     }
 
     pub fn set_data_field(&mut self, id: ObjectId, level: u32, data: u8, value: Value) {
@@ -186,8 +172,8 @@ pub struct ObjectStore {
 }
 
 #[derive(Debug, Serialize, Deserialize)]
-pub struct ObjectStoreStatic {
-    objects: BTreeMap<ObjectId, Object>
+pub struct ObjectStoreStock {
+    objects: BTreeMap<ObjectId, Object>,
 }
 
 impl Default for ObjectStore {
@@ -198,9 +184,9 @@ impl Default for ObjectStore {
     }
 }
 
-impl Default for ObjectStoreStatic {
-    fn default() -> ObjectStoreStatic {
-        ObjectStoreStatic {
+impl Default for ObjectStoreStock {
+    fn default() -> ObjectStoreStock {
+        ObjectStoreStock {
             objects: Default::default(),
         }
     }
@@ -213,14 +199,15 @@ fn process_slk_field(
     metadata: &MetadataStore,
 ) -> Option<()> {
     let (field_meta, level) = metadata.query_slk_field(name, &object)?;
-    let value = Value::from_str_and_ty(&field_meta.value_ty, value.as_inner()?)?;
+    let value = Value::from_str_and_ty(value.as_inner()?, field_meta.value_ty)?;
     let field_id = field_meta.id;
 
     match field_meta.variant {
         FieldVariant::Normal { .. } => object.set_simple_field(field_id, value),
-        FieldVariant::Leveled { .. } => object.set_level_field(
+        FieldVariant::Leveled { .. } => object.set_data_field(
             field_id,
             level.expect("field must have level specified"),
+            0,
             value,
         ),
         FieldVariant::Data { id } => object.set_data_field(
@@ -242,12 +229,12 @@ fn process_func_field(
     metadata: &MetadataStore,
 ) -> Option<()> {
     let field_meta = metadata.query_profile_field(key, &object, index)?;
-    let value = Value::from_str_and_ty(&field_meta.value_ty, value)?;
+    let value = Value::from_str_and_ty(value, field_meta.value_ty)?;
     let field_id = field_meta.id;
 
     match field_meta.variant {
         FieldVariant::Normal { .. } => object.set_simple_field(field_id, value),
-        FieldVariant::Leveled { .. } => object.set_level_field(field_id, 0, value),
+        FieldVariant::Leveled { .. } => object.set_data_field(field_id, 0, 0, value),
         FieldVariant::Data { id } => object.set_data_field(field_id, 0, id, value),
     }
 
@@ -264,7 +251,8 @@ impl ObjectStore {
     }
 
     pub fn insert_object(&mut self, object: Object) {
-        self.objects.insert(object.id, Rc::new(RefCell::new(object)));
+        self.objects
+            .insert(object.id, Rc::new(RefCell::new(object)));
     }
 
     pub fn merge_with(self, mut other: ObjectStore) -> ObjectStore {
@@ -319,8 +307,8 @@ impl ObjectStore {
     }
 }
 
-impl ObjectStoreStatic {
-    pub fn new(data: &ObjectStore) -> ObjectStoreStatic {
+impl ObjectStoreStock {
+    pub fn new(data: &ObjectStore) -> ObjectStoreStock {
         let mut data_static = Self::default();
         data_static.merge_from(data);
         data_static
@@ -338,7 +326,13 @@ impl ObjectStoreStatic {
         self.objects.get(&id)
     }
 
-    pub fn objects(&self) -> impl Iterator<Item=&Object> {
+    pub fn object_prototype(&self, object: &Object) -> Option<&Object> {
+        self.objects
+            .get(&object.id)
+            .or_else(|| object.parent_id.and_then(|pid| self.objects.get(&pid)))
+    }
+
+    pub fn objects(&self) -> impl Iterator<Item = &Object> {
         self.objects.values()
     }
 }

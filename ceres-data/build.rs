@@ -11,7 +11,7 @@ fn main() {
 
     let meta = metadata::read_metadata_dir(crate_dir.join("data"));
     let data = object::read_data_dir("data", &meta);
-    let data = object::ObjectStoreStatic::new(&data);
+    let data = object::ObjectStoreStock::new(&data);
 
     let mut file = fs::OpenOptions::new()
         .create(true)

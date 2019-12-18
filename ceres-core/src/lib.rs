@@ -1,6 +1,7 @@
 #![allow(dead_code)]
 
 extern crate ceres_mpq as mpq;
+extern crate ceres_data as w3data;
 
 pub(crate) mod lua;
 pub(crate) mod error;

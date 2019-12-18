@@ -38,8 +38,8 @@ fn send_layout(port: Option<u16>, layout: LuaTable) {
     }
 }
 
-pub fn setup_ceres_environ<'lua>(
-    ctx: LuaContext<'lua>,
+pub fn setup_ceres_environ(
+    ctx: LuaContext,
     run_mode: CeresRunMode,
     script_args: Vec<String>,
     extension_port: Option<u16>,
@@ -99,6 +99,12 @@ pub fn setup_ceres_environ<'lua>(
     ceres_table
         .set("runWarcraft", launcher::get_runmap_luafn(ctx))
         .unwrap();
+
+    ceres_table
+        .set("loadObjects", object::get_open_store_from_str_luafn(ctx))
+        .unwrap();
+
+
 
     let fs_table = fs::get_fs_module(ctx);
     let mpq_table = mpq::get_mpq_module(ctx);

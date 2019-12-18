@@ -34,7 +34,7 @@ pub mod read {
             0 => Value::Int(source.read_i32::<LE>()?),
             1 => Value::Real(source.read_f32::<LE>()?),
             2 => Value::Unreal(source.read_f32::<LE>()?),
-            3 => Value::Str(read_str(source).map(|s| String::from_utf8_lossy(s).into_owned())?),
+            3 => Value::String(read_str(source).map(|s| String::from_utf8_lossy(s).into_owned())?),
             _ => panic!("malformed"),
         })
     }
@@ -186,7 +186,7 @@ pub mod write {
             Value::Int(num) => writer.write_i32::<LE>(*num)?,
             Value::Real(num) => writer.write_f32::<LE>(*num)?,
             Value::Unreal(num) => writer.write_f32::<LE>(*num)?,
-            Value::Str(val) => write_string(&mut writer, val)?,
+            Value::String(val) => write_string(&mut writer, val)?,
         }
 
         Ok(())

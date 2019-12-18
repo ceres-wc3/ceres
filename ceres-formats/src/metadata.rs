@@ -12,6 +12,7 @@ use crate::parser::slk::read_row_num;
 use crate::parser::slk::read_row_str;
 use crate::ObjectId;
 use crate::ObjectKind;
+use crate::ValueType;
 use crate::object::Object;
 use crate::uncase::Uncase;
 
@@ -21,12 +22,13 @@ new_key_type! {
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct FieldDesc {
-    pub id:        ObjectId,
-    pub index:     i8,
-    pub variant:   FieldVariant,
-    pub value_ty:  String,
-    pub exclusive: Option<Vec<ObjectId>>,
-    pub kind:      ObjectKind,
+    pub id:           ObjectId,
+    pub index:        i8,
+    pub variant:      FieldVariant,
+    pub value_ty:     ValueType,
+    pub value_ty_raw: String,
+    pub exclusive:    Option<Vec<ObjectId>>,
+    pub kind:         ObjectKind,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -168,7 +170,8 @@ impl MetadataStore {
         self.add_field(FieldDesc {
             id: basic_info.field_id,
             index: basic_info.index,
-            value_ty: basic_info.value_ty,
+            value_ty: ValueType::new(&basic_info.value_ty),
+            value_ty_raw: basic_info.value_ty,
             exclusive: None,
             variant,
             kind,
@@ -197,7 +200,8 @@ impl MetadataStore {
         self.add_field(FieldDesc {
             id: basic_info.field_id,
             index: basic_info.index,
-            value_ty: basic_info.value_ty,
+            value_ty: ValueType::new(&basic_info.value_ty),
+            value_ty_raw: basic_info.value_ty,
             exclusive: None,
             variant,
             kind,
@@ -252,7 +256,8 @@ impl MetadataStore {
 
         self.add_field(FieldDesc {
             id: basic_info.field_id,
-            value_ty: basic_info.value_ty,
+            value_ty: ValueType::new(&basic_info.value_ty),
+            value_ty_raw: basic_info.value_ty,
             variant,
             exclusive,
             index: basic_info.index,
@@ -332,6 +337,25 @@ impl MetadataStore {
         self.find_named_field(&field_name, |f| {
             f.kind.contains(object_kind) && (f.index == index || f.index == -1)
         })
+    }
+
+    pub fn query_object_field(&self, field_id: ObjectId, object: &Object) -> Option<&FieldDesc> {
+        let desc = self
+            .ids_to_keys
+            .get(&field_id)
+            .and_then(|k| self.fields.get(*k))?;
+
+        if !desc.kind.contains(object.kind()) {
+            return None;
+        }
+
+        if let Some(exclusive) = &desc.exclusive {
+            if !exclusive.contains(&object.id()) {
+                return None;
+            }
+        }
+
+        Some(desc)
     }
 
     pub fn field_by_id(&self, id: ObjectId) -> Option<&FieldDesc> {
