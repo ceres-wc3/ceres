@@ -12,4 +12,4 @@ members = [
 opt-level = 1
 
 [patch.crates-io]
-rlua = { path = "../rlua-st" }
+rlua = { path = "./rlua-st" }
