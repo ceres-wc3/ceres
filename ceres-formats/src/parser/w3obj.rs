@@ -1,20 +1,11 @@
 use crate::ObjectKind;
 
-fn is_type_with_data(kind: ObjectKind) -> bool {
-    match kind {
-        ObjectKind::DOODAD | ObjectKind::ABILITY | ObjectKind::UPGRADE => true,
-        _ => false,
-    }
-}
-
 pub mod read {
     use byteorder::{BE, LE, ReadBytesExt};
 
     use crate::{ObjectId, ObjectKind};
     use crate::error::*;
     use crate::object::{Object, ObjectStore, Value};
-
-    use super::is_type_with_data;
 
     fn read_str<'src>(source: &mut &'src [u8]) -> Result<&'src [u8], ObjParseError> {
         let end = source
@@ -84,7 +75,7 @@ pub mod read {
 
             let mod_amount = source.read_u32::<LE>()?;
             for _ in 0..mod_amount {
-                read_field(source, &mut object, is_type_with_data(kind))?;
+                read_field(source, &mut object, kind.is_data_type())?;
             }
 
             objects.insert_object(object);
@@ -118,8 +109,6 @@ pub mod write {
 
     use crate::{ObjectId, ObjectKind};
     use crate::object::{FieldKind, Object, ObjectStore, Value};
-
-    use super::is_type_with_data;
 
     const W3OBJ_FORMAT_VERSION: u32 = 1;
 
@@ -251,7 +240,7 @@ pub mod write {
             writer.write_u32::<BE>(object.id().to_u32())?;
             writer.write_u32::<BE>(0)?;
 
-            if is_type_with_data(kind) {
+            if kind.is_data_type() {
                 write_data_fields(&mut writer, &object)?;
             } else {
                 write_simple_fields(&mut writer, &object)?;
@@ -264,7 +253,7 @@ pub mod write {
             writer.write_u32::<BE>(object.parent_id().unwrap().to_u32())?;
             writer.write_u32::<BE>(object.id().to_u32())?;
 
-            if is_type_with_data(kind) {
+            if kind.is_data_type() {
                 write_data_fields(&mut writer, &object)?;
             } else {
                 write_simple_fields(&mut writer, &object)?;
