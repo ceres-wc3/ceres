@@ -1,10 +1,10 @@
-use err_derive::Error;
-use pest::error::Error as PestError;
-use rlua::prelude::LuaError;
-
 use std::path::Path;
 use std::path::PathBuf;
 use std::error::Error;
+
+use err_derive::Error;
+use pest::error::Error as PestError;
+use rlua::prelude::LuaError;
 
 use ceres_parsers::lua;
 
@@ -24,6 +24,12 @@ impl StringError {
     }
 }
 
+impl From<StringError> for LuaError {
+    fn from(other: StringError) -> LuaError {
+        LuaError::external(other)
+    }
+}
+
 #[derive(Error, Debug)]
 #[error(display = "{}: {}", context, cause)]
 pub struct ContextError<E: Error> {
@@ -37,6 +43,12 @@ impl<E: Error> ContextError<E> {
             context: context.into(),
             cause,
         }
+    }
+}
+
+impl<E: Error + 'static> From<ContextError<E>> for LuaError {
+    fn from(other: ContextError<E>) -> LuaError {
+        LuaError::external(other)
     }
 }
 
