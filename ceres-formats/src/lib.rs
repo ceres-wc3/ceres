@@ -14,6 +14,10 @@ use serde::{Serialize, Deserialize};
 use bitflags::bitflags;
 
 #[derive(Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord, Serialize, Deserialize)]
+/// A WC3 object id, which is conceptually a simple 32-bit integer,
+/// but often represented as a 4-char ASCII string.
+///
+/// Provides conversion to/from byte arrays for this reason.
 pub struct ObjectId {
     id: u32,
 }
@@ -40,7 +44,14 @@ impl ObjectId {
     pub fn to_u32(self) -> u32 {
         self.id
     }
+
+    pub fn to_string(self) -> Option<String> {
+        let bytes: Vec<u8> = (&self.id.to_be_bytes()).iter().copied().collect();
+        String::from_utf8(bytes).ok()
+    }
 }
+
+
 
 impl std::fmt::Debug for ObjectId {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
@@ -79,6 +90,10 @@ impl From<u32> for ObjectId {
 }
 
 #[derive(Debug, Clone, Copy, Deserialize, Serialize, PartialEq, Eq, Hash)]
+/// Represents a WC3 primitive data type.
+///
+/// WC3 field metadata specifies many more types than these,
+/// but most of them collapse to strings.
 pub enum ValueType {
     Int,
     Real,
@@ -87,6 +102,9 @@ pub enum ValueType {
 }
 
 impl ValueType {
+    /// Collapse a WC3 data type into a primitive value type.
+    ///
+    /// Mostly supposed to be used with data types specified in SLKs.
     pub fn new(input: &str) -> ValueType {
         match input {
             "real" => ValueType::Real,
@@ -99,6 +117,7 @@ impl ValueType {
 
 bitflags! {
     #[derive(Serialize, Deserialize)]
+    /// Represents a WC3 object type.
     pub struct ObjectKind: u32 {
         const ABILITY = 0x1;
         const BUFF = 0x2;
@@ -112,6 +131,8 @@ bitflags! {
 }
 
 impl ObjectKind {
+    /// Converts an extension of a WC3 object data file
+    /// to its corresponding object type.
     pub fn from_ext(ext: &str) -> ObjectKind {
         match ext {
             "w3u" => ObjectKind::UNIT,
@@ -122,6 +143,17 @@ impl ObjectKind {
             "w3h" => ObjectKind::BUFF,
             "w3q" => ObjectKind::UPGRADE,
             _ => ObjectKind::empty(),
+        }
+    }
+
+    /// Returns true if the object type is capable
+    /// of using data/leveled fields instead of just regular fields.
+    ///
+    /// This affects the layout of WC3 object data files.
+    pub fn is_data_type(self) -> bool {
+        match self {
+            ObjectKind::DOODAD | ObjectKind::ABILITY | ObjectKind::UPGRADE => true,
+            _ => false
         }
     }
 }

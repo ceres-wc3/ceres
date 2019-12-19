@@ -261,7 +261,7 @@ impl ObjectStore {
         other
     }
 
-    pub fn insert_slk_row<'src>(
+    fn insert_slk_row<'src>(
         &mut self,
         kind: ObjectKind,
         row: slk::Row<'src>,
@@ -326,6 +326,9 @@ impl ObjectStoreStock {
         self.objects.get(&id)
     }
 
+    /// Returns the 'prototype' for this object
+    /// which is the parent if its a custom object,
+    /// or the original if its a stock modified object
     pub fn object_prototype(&self, object: &Object) -> Option<&Object> {
         self.objects
             .get(&object.id)
