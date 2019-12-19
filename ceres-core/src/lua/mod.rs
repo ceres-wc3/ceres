@@ -104,8 +104,6 @@ pub fn setup_ceres_environ(
         .set("loadObjects", object::get_open_store_from_str_luafn(ctx))
         .unwrap();
 
-
-
     let fs_table = fs::get_fs_module(ctx);
     let mpq_table = mpq::get_mpq_module(ctx);
 

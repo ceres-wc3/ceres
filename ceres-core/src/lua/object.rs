@@ -54,7 +54,8 @@ impl LuaUserData for ObjectWrap {
             w3data::metadata()
                 .query_object_field(id, &object)
                 .ok_or_else(|| {
-                    StringError::new(format!("no such field {} on object {}", id, object.id())).into()
+                    StringError::new(format!("no such field {} on object {}", id, object.id()))
+                        .into()
                 })
         }
 
@@ -68,7 +69,9 @@ impl LuaUserData for ObjectWrap {
                         .object_prototype(&object)
                         .and_then(|proto| field_getter(proto))
                 })
-                .ok_or_else(|| StringError::new(format!("no such field on object {}", object.id())).into())
+                .ok_or_else(|| {
+                    StringError::new(format!("no such field on object {}", object.id())).into()
+                })
         }
 
         methods.add_method(
@@ -104,9 +107,12 @@ impl LuaUserData for ObjectWrap {
 
                 let data_id = match field_meta.variant {
                     FieldVariant::Data { id } => id,
-                    FieldVariant::Normal { .. } => return Err(StringError::new(
-                        "cannot set level on field {} because it is not leveled",
-                    ).into()),
+                    FieldVariant::Normal { .. } => {
+                        return Err(StringError::new(
+                            "cannot set level on field {} because it is not leveled",
+                        )
+                        .into())
+                    }
                     _ => 0,
                 };
 
@@ -128,7 +134,8 @@ impl LuaUserData for ObjectWrap {
                     return Err(StringError::new(format!(
                         "tried to get field {} as simple but it's actually a data field",
                         id
-                    )).into())
+                    ))
+                    .into())
                 }
                 _ => {}
             }
@@ -150,7 +157,8 @@ impl LuaUserData for ObjectWrap {
                     return Err(StringError::new(format!(
                         "tried to get field {} as data but it's actually a simple field",
                         id
-                    )).into());
+                    ))
+                    .into());
                 }
 
                 let data_id = match field_meta.variant {
@@ -172,9 +180,7 @@ impl LuaUserData for ObjectStoreWrap {
         T: LuaUserDataMethods<'lua, Self>,
     {
         methods.add_method("getObject", |ctx, data, id: LuaValue| {
-            let obj = data
-                .inner
-                .object(lvalue_to_objid(id)?);
+            let obj = data.inner.object(lvalue_to_objid(id)?);
 
             Ok(obj.map(|o| ObjectWrap {
                 inner: Rc::clone(o),
