@@ -16,3 +16,4 @@
 !rustfmt.toml
 !README.md
 !CHANGELOG.md
+*.slk#

@@ -1,0 +1,3 @@
+[submodule "rlua-st"]
+	path = rlua-st
+	url = git@github.com:ElusiveMori/rlua-st.git
