@@ -6,7 +6,8 @@ const BUNDLED_DATA_BIN: &[u8] = include_bytes!(concat!(env!("OUT_DIR"), "/data.b
 
 lazy_static! {
     static ref BUNDLED_DATA: (ObjectStoreStock, MetadataStore) = {
-        let data: (ObjectStoreStock, MetadataStore) = bincode::deserialize(BUNDLED_DATA_BIN).unwrap();
+        let data: (ObjectStoreStock, MetadataStore) =
+            bincode::deserialize(BUNDLED_DATA_BIN).unwrap();
 
         data
     };

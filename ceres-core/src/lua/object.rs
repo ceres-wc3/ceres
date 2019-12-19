@@ -16,10 +16,6 @@ use ceres_formats::metadata::{FieldDesc, FieldVariant};
 use crate::error::{AnyError, StringError};
 use crate::lua::util::*;
 
-struct ValueWrap {
-    inner: Value,
-}
-
 struct ObjectWrap {
     inner: Rc<RefCell<Object>>,
 }
@@ -40,7 +36,7 @@ fn lvalue_to_value<'lua>(
     ctx: LuaContext<'lua>,
     value: LuaValue<'lua>,
     field_meta: &FieldDesc,
-) -> Result<Value, AnyError> {
+) -> Result<Value, LuaError> {
     Ok(match field_meta.value_ty {
         ValueType::String => Value::String(FromLua::from_lua(value, ctx)?),
         ValueType::Int => Value::Int(FromLua::from_lua(value, ctx)?),
@@ -48,8 +44,6 @@ fn lvalue_to_value<'lua>(
         ValueType::Unreal => Value::Unreal(FromLua::from_lua(value, ctx)?),
     })
 }
-
-impl LuaUserData for ValueWrap {}
 
 impl LuaUserData for ObjectWrap {
     fn add_methods<'lua, T>(methods: &mut T)
@@ -60,15 +54,27 @@ impl LuaUserData for ObjectWrap {
             w3data::metadata()
                 .query_object_field(id, &object)
                 .ok_or_else(|| {
-                    StringError::new(format!("no such field {} on object {}", id, object.id()))
+                    StringError::new(format!("no such field {} on object {}", id, object.id())).into()
                 })
-                .map_err(LuaError::external)
+        }
+
+        fn get_field_for<C>(object: &Object, field_getter: C) -> Result<&Value, LuaError>
+        where
+            C: Fn(&Object) -> Option<&Value>,
+        {
+            field_getter(object)
+                .or_else(|| {
+                    w3data::data()
+                        .object_prototype(&object)
+                        .and_then(|proto| field_getter(proto))
+                })
+                .ok_or_else(|| StringError::new(format!("no such field on object {}", object.id())).into())
         }
 
         methods.add_method(
             "setField",
             |ctx, object, (id, value): (LuaValue, LuaValue)| {
-                let id = lvalue_to_objid(id).map_err(LuaError::external)?;
+                let id = lvalue_to_objid(id)?;
                 let mut object = object.inner.borrow_mut();
                 let field_meta = get_meta_for(id, &object)?;
 
@@ -77,7 +83,7 @@ impl LuaUserData for ObjectWrap {
                     _ => 0,
                 };
 
-                let value = lvalue_to_value(ctx, value, field_meta).map_err(LuaError::external)?;
+                let value = lvalue_to_value(ctx, value, field_meta)?;
 
                 if data_id == 0 {
                     object.set_simple_field(id, value);
@@ -92,19 +98,19 @@ impl LuaUserData for ObjectWrap {
         methods.add_method(
             "setLevelField",
             |ctx, object, (id, level, value): (LuaValue, LuaInteger, LuaValue)| {
-                let id = lvalue_to_objid(id).map_err(LuaError::external)?;
+                let id = lvalue_to_objid(id)?;
                 let mut object = object.inner.borrow_mut();
                 let field_meta = get_meta_for(id, &object)?;
 
-                // we don't take the data id from the user because the data id field
-                // is basically unused... but still a requirement
-                // we can get it from the metadata instead
                 let data_id = match field_meta.variant {
                     FieldVariant::Data { id } => id,
+                    FieldVariant::Normal { .. } => return Err(StringError::new(
+                        "cannot set level on field {} because it is not leveled",
+                    ).into()),
                     _ => 0,
                 };
 
-                let value = lvalue_to_value(ctx, value, field_meta).map_err(LuaError::external)?;
+                let value = lvalue_to_value(ctx, value, field_meta)?;
 
                 object.set_data_field(id, level as u32, data_id, value);
 
@@ -113,31 +119,21 @@ impl LuaUserData for ObjectWrap {
         );
 
         methods.add_method("getField", |ctx, object, id: LuaValue| {
-            let id = lvalue_to_objid(id).map_err(LuaError::external)?;
+            let id = lvalue_to_objid(id)?;
             let object = object.inner.borrow();
             let field_meta = get_meta_for(id, &object)?;
 
             match field_meta.variant {
                 FieldVariant::Data { .. } | FieldVariant::Leveled { .. } => {
-                    return Err(LuaError::external(StringError::new(format!(
+                    return Err(StringError::new(format!(
                         "tried to get field {} as simple but it's actually a data field",
                         id
-                    ))))
+                    )).into())
                 }
                 _ => {}
             }
 
-            let field = object
-                .simple_field(id)
-                .or_else(|| {
-                    w3data::data()
-                        .object_prototype(&object)
-                        .and_then(|proto| proto.simple_field(id))
-                })
-                .ok_or_else(|| {
-                    StringError::new(format!("no such field {} on object {}", id, object.id()))
-                })
-                .map_err(LuaError::external)?;
+            let field = get_field_for(&object, |o| o.simple_field(id))?;
 
             Ok(value_to_lvalue(ctx, field))
         });
@@ -145,16 +141,16 @@ impl LuaUserData for ObjectWrap {
         methods.add_method(
             "getLevelField",
             |ctx, object, (id, level): (LuaValue, LuaInteger)| {
-                let id = lvalue_to_objid(id).map_err(LuaError::external)?;
+                let id = lvalue_to_objid(id)?;
                 let level = level as u32;
                 let object = object.inner.borrow();
                 let field_meta = get_meta_for(id, &object)?;
 
                 if let FieldVariant::Normal { .. } = field_meta.variant {
-                    return Err(LuaError::external(StringError::new(format!(
+                    return Err(StringError::new(format!(
                         "tried to get field {} as data but it's actually a simple field",
                         id
-                    ))));
+                    )).into());
                 }
 
                 let data_id = match field_meta.variant {
@@ -162,17 +158,7 @@ impl LuaUserData for ObjectWrap {
                     _ => 0,
                 };
 
-                let field = object
-                    .data_field(id, level, data_id)
-                    .or_else(|| {
-                        w3data::data()
-                            .object_prototype(&object)
-                            .and_then(|proto| proto.data_field(id, level, data_id))
-                    })
-                    .ok_or_else(|| {
-                        StringError::new(format!("no such field {} on object {}", id, object.id()))
-                    })
-                    .map_err(LuaError::external)?;
+                let field = get_field_for(&object, |o| o.data_field(id, level, data_id))?;
 
                 Ok(value_to_lvalue(ctx, field))
             },
@@ -188,7 +174,7 @@ impl LuaUserData for ObjectStoreWrap {
         methods.add_method("getObject", |ctx, data, id: LuaValue| {
             let obj = data
                 .inner
-                .object(lvalue_to_objid(id).map_err(LuaError::external)?);
+                .object(lvalue_to_objid(id)?);
 
             Ok(obj.map(|o| ObjectWrap {
                 inner: Rc::clone(o),
@@ -211,42 +197,6 @@ pub fn get_open_store_from_str_luafn(ctx: LuaContext) -> LuaFunction {
         let result = open_store_from_str(data, ext);
 
         Ok(wrap_result(ctx, result))
-    })
-    .unwrap()
-}
-
-pub fn get_int_value_luafn(ctx: LuaContext) -> LuaFunction {
-    ctx.create_function(|ctx, value: LuaInteger| {
-        Ok(ValueWrap {
-            inner: Value::Int(value as i32),
-        })
-    })
-    .unwrap()
-}
-
-pub fn get_real_value_luafn(ctx: LuaContext) -> LuaFunction {
-    ctx.create_function(|ctx, value: LuaNumber| {
-        Ok(ValueWrap {
-            inner: Value::Real(value as f32),
-        })
-    })
-    .unwrap()
-}
-
-pub fn get_unreal_value_luafn(ctx: LuaContext) -> LuaFunction {
-    ctx.create_function(|ctx, value: LuaNumber| {
-        Ok(ValueWrap {
-            inner: Value::Unreal(value.max(1.0).min(0.0) as f32),
-        })
-    })
-    .unwrap()
-}
-
-pub fn get_string_value_luafn(ctx: LuaContext) -> LuaFunction {
-    ctx.create_function(|ctx, value: LuaString| {
-        Ok(ValueWrap {
-            inner: Value::String(value.to_str()?.to_string()),
-        })
     })
     .unwrap()
 }

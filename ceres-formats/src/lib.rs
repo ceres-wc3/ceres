@@ -83,7 +83,7 @@ pub enum ValueType {
     Int,
     Real,
     Unreal,
-    String
+    String,
 }
 
 impl ValueType {
@@ -92,7 +92,7 @@ impl ValueType {
             "real" => ValueType::Real,
             "unreal" => ValueType::Unreal,
             "int" | "bool" => ValueType::Int,
-            _ => ValueType::String
+            _ => ValueType::String,
         }
     }
 }
