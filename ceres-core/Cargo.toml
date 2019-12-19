@@ -17,8 +17,7 @@ walkdir = "2.2.9"
 itertools = "0.8.2"
 path-absolutize = "1.1.7"
 
-ceres-mpq = { path = "../../ceres-mpq" }
-# ceres-mpq = "0.1.4"
+ceres-mpq = "0.1.4"
 ceres-formats = {path = "../ceres-formats"}
 ceres-parsers = {path = "../ceres-parsers"}
 ceres-data = {path = "../ceres-data"}

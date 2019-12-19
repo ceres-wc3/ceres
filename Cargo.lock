@@ -125,7 +125,7 @@ version = "0.1.0-INTERNAL"
 dependencies = [
  "ceres-data 0.1.0-INTERNAL",
  "ceres-formats 0.1.0-INTERNAL",
- "ceres-mpq 0.1.6-alpha.0",
+ "ceres-mpq 0.1.5 (registry+https://github.com/rust-lang/crates.io-index)",
  "ceres-parsers 0.1.0-INTERNAL",
  "err-derive 0.2.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "indexmap 1.3.0 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -169,7 +169,8 @@ dependencies = [
 
 [[package]]
 name = "ceres-mpq"
-version = "0.1.6-alpha.0"
+version = "0.1.5"
+source = "registry+https://github.com/rust-lang/crates.io-index"
 dependencies = [
  "byte-slice-cast 0.3.4 (registry+https://github.com/rust-lang/crates.io-index)",
  "byteorder 1.3.2 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -683,6 +684,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 "checksum bzip2 0.3.3 (registry+https://github.com/rust-lang/crates.io-index)" = "42b7c3cbf0fa9c1b82308d57191728ca0256cb821220f4e2fd410a72ade26e3b"
 "checksum bzip2-sys 0.1.7 (registry+https://github.com/rust-lang/crates.io-index)" = "6584aa36f5ad4c9247f5323b0a42f37802b37a836f0ad87084d7a33961abe25f"
 "checksum cc 1.0.48 (registry+https://github.com/rust-lang/crates.io-index)" = "f52a465a666ca3d838ebbf08b241383421412fe7ebb463527bba275526d89f76"
+"checksum ceres-mpq 0.1.5 (registry+https://github.com/rust-lang/crates.io-index)" = "c32c30015f0e7ec18960dc51e24194857ccda83cc15f5f7c2ebbec96ffaa3a66"
 "checksum cfg-if 0.1.10 (registry+https://github.com/rust-lang/crates.io-index)" = "4785bdd1c96b2a846b2bd7cc02e86b6b3dbf14e7e53446c4f54c92a361040822"
 "checksum clap 2.33.0 (registry+https://github.com/rust-lang/crates.io-index)" = "5067f5bb2d80ef5d68b4c87db81601f0b75bca627bc2ef76b141d7b846a3c6d9"
 "checksum crc32fast 1.2.0 (registry+https://github.com/rust-lang/crates.io-index)" = "ba125de2af0df55319f41944744ad91c71113bf74a4646efff39afe1f6842db1"
