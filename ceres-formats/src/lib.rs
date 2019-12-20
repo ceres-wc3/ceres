@@ -8,7 +8,6 @@ pub mod parser {
 pub mod error;
 pub mod metadata;
 pub mod object;
-pub mod uncase;
 
 use serde::{Serialize, Deserialize};
 use bitflags::bitflags;
@@ -154,6 +153,19 @@ impl ObjectKind {
         match self {
             ObjectKind::DOODAD | ObjectKind::ABILITY | ObjectKind::UPGRADE => true,
             _ => false
+        }
+    }
+
+    pub fn to_typestr(self) -> &'static str {
+        match self {
+            ObjectKind::UNIT => "unit",
+            ObjectKind::ABILITY => "ability",
+            ObjectKind::ITEM => "item",
+            ObjectKind::DESTRUCTABLE => "destructable",
+            ObjectKind::DOODAD => "doodad",
+            ObjectKind::BUFF => "buff",
+            ObjectKind::UPGRADE => "upgrade",
+            _ => "none"
         }
     }
 }

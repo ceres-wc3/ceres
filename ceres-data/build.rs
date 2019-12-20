@@ -19,5 +19,5 @@ fn main() {
         .open(out_dir.join("data.bin"))
         .unwrap();
 
-    bincode::serialize_into(&mut file, &(&meta, &data)).unwrap();
+    bincode::serialize_into(&mut file, &(&data, &meta)).unwrap();
 }

@@ -14,5 +14,3 @@ serde = { version = "1.0.103", features = ["derive", "rc"] }
 slotmap = { version = "0.4.0", features = ["unstable", "serde"] }
 num-traits = "0.2.10"
 bitflags = "1.2.1"
-unicase = "2.6.0"
-unicase_serde = "0.1.0"

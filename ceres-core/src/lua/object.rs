@@ -59,20 +59,39 @@ impl LuaUserData for ObjectWrap {
                 })
         }
 
-        fn get_field_for<C>(object: &Object, field_getter: C) -> Result<&Value, LuaError>
+        fn get_field_for<C>(object: &Object, field_getter: C) -> Option<&Value>
         where
             C: Fn(&Object) -> Option<&Value>,
         {
-            field_getter(object)
-                .or_else(|| {
-                    w3data::data()
-                        .object_prototype(&object)
-                        .and_then(|proto| field_getter(proto))
-                })
-                .ok_or_else(|| {
-                    StringError::new(format!("no such field on object {}", object.id())).into()
-                })
+            field_getter(object).or_else(|| {
+                w3data::data()
+                    .object_prototype(&object)
+                    .and_then(|proto| field_getter(proto))
+            })
         }
+
+        methods.add_method("getId", |ctx, data, _: ()| Ok(todo!()));
+
+        methods.add_method("getParentId", |ctx, data, _: ()| Ok(todo!()));
+
+        methods.add_method("isCustom", |ctx, data, _: ()| Ok(todo!()));
+
+        methods.add_method("getType", |ctx, data, _: ()| Ok(todo!()));
+
+        methods.add_method("clone", |ctx, data, _: ()| Ok(todo!()));
+
+        methods.add_method("getFields", |ctx, object, (): ()| {
+            let fields: Vec<String> = w3data::metadata()
+                .query_all_object_fields(&object.inner.borrow())
+                .map(|desc| {
+                    desc.id
+                        .to_string()
+                        .expect("builtin ID is not representible as a string... wut")
+                })
+                .collect();
+
+            Ok(fields)
+        });
 
         methods.add_method(
             "setField",
@@ -140,9 +159,9 @@ impl LuaUserData for ObjectWrap {
                 _ => {}
             }
 
-            let field = get_field_for(&object, |o| o.simple_field(id))?;
+            let field = get_field_for(&object, |o| o.simple_field(id));
 
-            Ok(value_to_lvalue(ctx, field))
+            Ok(field.map(|f| value_to_lvalue(ctx, f)))
         });
 
         methods.add_method(
@@ -166,9 +185,9 @@ impl LuaUserData for ObjectWrap {
                     _ => 0,
                 };
 
-                let field = get_field_for(&object, |o| o.data_field(id, level, data_id))?;
+                let field = get_field_for(&object, |o| o.data_field(id, level, data_id));
 
-                Ok(value_to_lvalue(ctx, field))
+                Ok(field.map(|f| value_to_lvalue(ctx, f)))
             },
         );
     }
@@ -186,21 +205,57 @@ impl LuaUserData for ObjectStoreWrap {
                 inner: Rc::clone(o),
             }))
         });
+
+        methods.add_method("getObjects", |ctx, data, _: ()| {
+            let objects: Vec<_> = data.inner.objects()
+                .map(|obj| Rc::clone(obj))
+                .map(|obj| ObjectWrap { inner: obj })
+                .collect();
+
+            Ok(objects)
+        });
+
+        methods.add_method_mut("addFrom", |ctx, data, other: LuaAnyUserData| {
+            let other = other.borrow_mut::<ObjectStoreWrap>()?;
+
+//            data.inner.
+
+            Ok(todo!())
+        });
+
+        methods.add_method("writeToString", |ctx, data, _: ()| Ok(todo!()));
+
+        methods.add_method("addObject", |ctx, data, _: ()| Ok(todo!()));
+
+        methods.add_method("removeObject", |ctx, data, _: ()| Ok(todo!()));
     }
 }
 
-fn open_store_from_str(input: LuaString, ext: LuaString) -> Result<ObjectStoreWrap, AnyError> {
-    let data = input.as_bytes();
-    let kind = ObjectKind::from_ext(ext.to_str()?);
-
+fn open_store_from_str(data: &[u8], kind: ObjectKind) -> Result<ObjectStoreWrap, AnyError> {
     let object_data = w3obj::read::read_object_file(data, kind)?;
 
     Ok(ObjectStoreWrap { inner: object_data })
 }
 
+pub fn get_create_new_object_luafn(ctx: LuaContext) -> LuaFunction {
+    ctx.create_function(|ctx: LuaContext, (): ()| Ok(todo!()))
+        .unwrap()
+}
+
 pub fn get_open_store_from_str_luafn(ctx: LuaContext) -> LuaFunction {
     ctx.create_function(|ctx: LuaContext, (data, ext): (LuaString, LuaString)| {
-        let result = open_store_from_str(data, ext);
+        let data = data.as_bytes();
+        let kind = ObjectKind::from_ext(ext.to_str()?);
+
+        if kind == ObjectKind::empty() {
+            return Err(StringError::new(format!(
+                "{} is not a valid format",
+                ext.to_str().unwrap()
+            ))
+            .into());
+        }
+
+        let result = open_store_from_str(data, kind);
 
         Ok(wrap_result(ctx, result))
     })

@@ -164,6 +164,16 @@ impl Object {
             }
         }
     }
+
+    /// Merges this object's data with another object's data
+    /// Doesn't do field-level merging because it's not needed
+    /// in our use case. Just override the fields in this object
+    /// from the fields in the other.
+    pub fn merge_with(&mut self, other: &Object) {
+        for (id, field) in &other.fields {
+            self.fields.insert(*id, field.clone());
+        }
+    }
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -199,6 +209,7 @@ fn process_slk_field(
     metadata: &MetadataStore,
 ) -> Option<()> {
     let (field_meta, level) = metadata.query_slk_field(name, &object)?;
+
     let value = Value::from_str_and_ty(value.as_inner()?, field_meta.value_ty)?;
     let field_id = field_meta.id;
 
@@ -255,10 +266,19 @@ impl ObjectStore {
             .insert(object.id, Rc::new(RefCell::new(object)));
     }
 
-    pub fn merge_with(self, mut other: ObjectStore) -> ObjectStore {
-        other.objects.extend(self.objects.into_iter());
+    pub fn remove_object(&mut self, id: ObjectId) {
+        self.objects.remove(&id);
+    }
 
-        other
+    pub fn add_from(&mut self, other: &ObjectStore) {
+        for (id, other_object) in &other.objects {
+            if let Some(object) = self.objects.get_mut(&id) {
+                object.borrow_mut().merge_with(&other_object.borrow());
+            } else {
+                let cloned = other_object.borrow().clone();
+                self.objects.insert(*id, Rc::new(RefCell::new(cloned)));
+            }
+        }
     }
 
     fn insert_slk_row<'src>(

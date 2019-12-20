@@ -14,7 +14,6 @@ use crate::ObjectId;
 use crate::ObjectKind;
 use crate::ValueType;
 use crate::object::Object;
-use crate::uncase::Uncase;
 
 new_key_type! {
     struct FieldKey;
@@ -128,17 +127,17 @@ pub struct MetadataStore {
     // multiple fields may be mapped to the same name,
     // namely if they belong to different objects or have different indices
     // so additional filtering must be performed
-    names_to_keys: BTreeMap<Uncase, Vec<FieldKey>>,
+    names_to_keys: BTreeMap<String, Vec<FieldKey>>,
 }
 
 impl MetadataStore {
     fn add_field(&mut self, field: FieldDesc) {
         let id = field.id;
-        let name = field.variant.name().to_string();
+        let name = field.variant.name().to_ascii_lowercase();
         let key = self.fields.insert(field);
         self.ids_to_keys.insert(id, key);
         self.names_to_keys
-            .entry(Uncase::new(name))
+            .entry(name)
             .or_default()
             .push(key);
     }
@@ -282,7 +281,7 @@ impl MetadataStore {
         F: FnMut(&FieldDesc) -> bool,
     {
         self.names_to_keys
-            .get(name)
+            .get(&name.to_ascii_lowercase())
             .and_then(|v| self.find_field(v.iter().copied(), closure))
     }
 
@@ -334,8 +333,12 @@ impl MetadataStore {
         index: i8,
     ) -> Option<&FieldDesc> {
         let object_kind = object.kind();
+
         self.find_named_field(&field_name, |f| {
             f.kind.contains(object_kind) && (f.index == index || f.index == -1)
+        }).or_else(|| {
+            println!("{} {} {}", object.id(), field_name, index);
+            None
         })
     }
 
@@ -356,6 +359,28 @@ impl MetadataStore {
         }
 
         Some(desc)
+    }
+
+    /// Will return an iterator of all fields available for this object,
+    /// irrespective of which fields exist on the object itself.
+    pub fn query_all_object_fields(&self, object: &Object) -> impl Iterator<Item = &FieldDesc> {
+        let object_kind = object.kind();
+        let object_id = if let Some(id) = object.parent_id() {
+            id
+        } else {
+            object.id()
+        };
+
+        self.fields
+            .values()
+            .filter(move |desc| desc.kind.contains(object_kind))
+            .filter(move |desc| {
+                if let Some(exclusive) = &desc.exclusive {
+                    exclusive.contains(&object_id)
+                } else {
+                    true
+                }
+            })
     }
 
     pub fn field_by_id(&self, id: ObjectId) -> Option<&FieldDesc> {

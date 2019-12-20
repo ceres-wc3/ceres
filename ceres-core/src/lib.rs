@@ -62,15 +62,14 @@ where
         Ok(())
     });
 
-    if let Err(LuaError::CallbackError { cause, .. }) = &result {
-        if let LuaError::ExternalError(err) = cause.as_ref() {
-            if let Some(err) = err.downcast_ref::<CompilerError>() {
-                println!("[ERROR] A compiler error occured:\n{}", err);
-            } else {
-                println!("[ERROR] An unknown error in Ceres occured:\n{:?}", err);
-            }
+    if let Err(LuaError::ExternalError(cause)) = &result {
+        if let Some(LuaError::CallbackError {traceback, cause}) = cause.downcast_ref::<LuaError>() {
+            println!("[ERROR] An error occured while executing the script:");
+            println!("{}", cause);
+            println!("{}", traceback);
         } else {
-            println!("[ERROR] An unknown error in Ceres occured:\n{:?}", cause);
+            println!("[ERROR] Unknown error:");
+            println!("[ERROR] {}", cause);
         }
     } else if let Err(err) = &result {
         println!("[ERROR] A Lua error occured in the build script:\n{}", err);

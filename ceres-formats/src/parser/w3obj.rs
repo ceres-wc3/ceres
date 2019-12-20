@@ -58,10 +58,10 @@ pub mod read {
 
     pub fn read_object_table(
         source: &mut &[u8],
+        data: &mut ObjectStore,
         kind: ObjectKind,
-    ) -> Result<ObjectStore, ObjParseError> {
+    ) -> Result<(), ObjParseError> {
         let obj_amount = source.read_u32::<LE>()?;
-        let mut objects = ObjectStore::default();
 
         for _ in 0..obj_amount {
             let original_id = source.read_u32::<BE>().map(ObjectId::new)?;
@@ -78,10 +78,10 @@ pub mod read {
                 read_field(source, &mut object, kind.is_data_type())?;
             }
 
-            objects.insert_object(object);
+            data.insert_object(object);
         }
 
-        Ok(objects)
+        Ok(())
     }
 
     /// Reads the given object file, and produces
@@ -93,11 +93,12 @@ pub mod read {
     ) -> Result<ObjectStore, ObjParseError> {
         // skip version
         source.read_u32::<LE>()?;
+        let mut data = ObjectStore::default();
 
-        let original = read_object_table(&mut source, kind)?;
-        let new = read_object_table(&mut source, kind)?;
+        read_object_table(&mut source, &mut data, kind)?;
+        read_object_table(&mut source, &mut data, kind)?;
 
-        Ok(new.merge_with(original))
+        Ok(data)
     }
 }
 
