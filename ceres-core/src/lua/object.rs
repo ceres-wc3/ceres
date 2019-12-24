@@ -7,13 +7,14 @@ use std::cell::RefCell;
 use std::rc::Rc;
 
 use rlua::prelude::*;
+use atoi::atoi;
 
-use ceres_formats::{ObjectKind, ObjectId, ValueType};
-use ceres_formats::object::{Object, ObjectStore, Field, FieldKind, Value};
-use ceres_formats::parser::w3obj;
+use ceres_formats::{ObjectId, ObjectKind, ValueType};
 use ceres_formats::metadata::{FieldDesc, FieldVariant};
+use ceres_formats::object::{Field, FieldKind, Object, ObjectStore, Value};
+use ceres_formats::parser::w3obj;
 
-use crate::error::{AnyError, StringError};
+use crate::error::{AnyError, ContextError, StringError};
 use crate::lua::util::*;
 
 struct ObjectWrap {
@@ -70,15 +71,43 @@ impl LuaUserData for ObjectWrap {
             })
         }
 
-        methods.add_method("getId", |ctx, data, _: ()| Ok(todo!()));
+        methods.add_method("getId", |ctx, object, _: ()| {
+            Ok(object.inner.borrow().id().to_string())
+        });
 
-        methods.add_method("getParentId", |ctx, data, _: ()| Ok(todo!()));
+        methods.add_method("getParentId", |ctx, object, _: ()| {
+            Ok(object
+                .inner
+                .borrow()
+                .parent_id()
+                .and_then(|id| id.to_string()))
+        });
 
-        methods.add_method("isCustom", |ctx, data, _: ()| Ok(todo!()));
+        methods.add_method("isCustom", |ctx, object, _: ()| {
+            Ok(object.inner.borrow().parent_id().is_some())
+        });
 
-        methods.add_method("getType", |ctx, data, _: ()| Ok(todo!()));
+        methods.add_method("getType", |ctx, object, _: ()| {
+            let type_str = object.inner.borrow().kind().to_typestr();
 
-        methods.add_method("clone", |ctx, data, _: ()| Ok(todo!()));
+            Ok(type_str)
+        });
+
+        methods.add_method("clone", |ctx, object, id: LuaValue| {
+            let id = lvalue_to_objid(id)?;
+            let object = object.inner.borrow();
+            let mut new_object = Object::with_parent(
+                id,
+                object.parent_id().unwrap_or_else(|| object.id()),
+                object.kind(),
+            );
+
+            new_object.add_from(&object);
+
+            Ok(ObjectWrap {
+                inner: Rc::new(RefCell::new(new_object)),
+            })
+        });
 
         methods.add_method("getFields", |ctx, object, (): ()| {
             let fields: Vec<String> = w3data::metadata()
@@ -105,12 +134,22 @@ impl LuaUserData for ObjectWrap {
                     _ => 0,
                 };
 
-                let value = lvalue_to_value(ctx, value, field_meta)?;
+                let value = if let LuaValue::Nil = value {
+                    None
+                } else {
+                    Some(lvalue_to_value(ctx, value, field_meta)?)
+                };
 
                 if data_id == 0 {
-                    object.set_simple_field(id, value);
-                } else {
+                    if let Some(value) = value {
+                        object.set_simple_field(id, value);
+                    } else {
+                        object.unset_simple_field(id);
+                    }
+                } else if let Some(value) = value {
                     object.set_data_field(id, 0, data_id, value);
+                } else {
+                    object.unset_data_field(id, 0, data_id);
                 }
 
                 Ok(())
@@ -135,9 +174,14 @@ impl LuaUserData for ObjectWrap {
                     _ => 0,
                 };
 
-                let value = lvalue_to_value(ctx, value, field_meta)?;
+                if let LuaValue::Nil = value {
+                    object.unset_data_field(id, level as u32, data_id);
+                } else {
+                    let value = lvalue_to_value(ctx, value, field_meta)?;
 
-                object.set_data_field(id, level as u32, data_id, value);
+                    object.set_data_field(id, level as u32, data_id, value);
+                };
+
 
                 Ok(())
             },
@@ -190,6 +234,39 @@ impl LuaUserData for ObjectWrap {
                 Ok(field.map(|f| value_to_lvalue(ctx, f)))
             },
         );
+
+        methods.add_method("translateField", |ctx, object, field_name: LuaString| {
+            let field_bytes = field_name.as_bytes();
+
+            // check if the field is in the form of 'XXXX' or 'XXXX+Y'
+            if (field_bytes.len() == 4) || (field_bytes.len() > 5 && field_bytes[4] == b'+') {
+                let object_id = ObjectId::from_bytes(&field_bytes[0..4]).unwrap();
+
+                if let Some(field_desc) =
+                    w3data::metadata().query_object_field(object_id, &object.inner.borrow())
+                {
+                    let level = if field_bytes.len() > 5 {
+                        atoi::<u32>(&field_bytes[5..])
+                    } else {
+                        None
+                    };
+
+                    let id = field_desc.id.to_string();
+                    if (level.is_some() && field_desc.variant.is_leveled())
+                        || (level.is_none() && !field_desc.variant.is_leveled())
+                    {
+                        return Ok((id, level));
+                    }
+                }
+            }
+
+            let (id, level) = w3data::metadata()
+                .query_lua_field(&object.inner.borrow(), field_name.to_str()?)
+                .map(|(desc, level)| (desc.id.to_string(), level))
+                .unwrap_or((None, None));
+
+            Ok((id, level))
+        });
     }
 }
 
@@ -198,36 +275,72 @@ impl LuaUserData for ObjectStoreWrap {
     where
         T: LuaUserDataMethods<'lua, Self>,
     {
-        methods.add_method("getObject", |ctx, data, id: LuaValue| {
-            let obj = data.inner.object(lvalue_to_objid(id)?);
+        methods.add_method_mut("getObject", |ctx, data, id: LuaValue| {
+            let id = lvalue_to_objid(id)?;
+            let object = data.inner.object(id);
 
-            Ok(obj.map(|o| ObjectWrap {
-                inner: Rc::clone(o),
-            }))
+            Ok(object
+                .map(|o| ObjectWrap {
+                    inner: Rc::clone(o),
+                })
+                .or_else(|| {
+                    // try to get a proxy object from the stock object db
+                    // if there's one
+                    w3data::data().object(id).map(|object| {
+                        let object = Object::new(object.id(), object.kind());
+                        data.inner.insert_object(object);
+
+                        ObjectWrap {
+                            inner: Rc::clone(data.inner.object(id).unwrap()),
+                        }
+                    })
+                }))
         });
 
         methods.add_method("getObjects", |ctx, data, _: ()| {
-            let objects: Vec<_> = data.inner.objects()
-                .map(|obj| Rc::clone(obj))
-                .map(|obj| ObjectWrap { inner: obj })
+            let objects: Vec<_> = data
+                .inner
+                .objects()
+                .map(|object| Rc::clone(object))
+                .map(|object| ObjectWrap { inner: object })
                 .collect();
 
             Ok(objects)
         });
 
         methods.add_method_mut("addFrom", |ctx, data, other: LuaAnyUserData| {
-            let other = other.borrow_mut::<ObjectStoreWrap>()?;
-
-//            data.inner.
-
-            Ok(todo!())
+            let other = other.borrow::<ObjectStoreWrap>()?;
+            data.inner.add_from(&other.inner);
+            Ok(())
         });
 
-        methods.add_method("writeToString", |ctx, data, _: ()| Ok(todo!()));
+        methods.add_method("writeToString", |ctx, data, ext: LuaString| {
+            let mut out: Vec<u8> = Default::default();
+            w3obj::write::write_object_file(
+                &mut out,
+                &data.inner,
+                ObjectKind::from_ext(ext.to_str()?),
+            )
+            .map_err(|err| ContextError::new("couldn't write objects to file", err))?;
 
-        methods.add_method("addObject", |ctx, data, _: ()| Ok(todo!()));
+            Ok(out)
+        });
 
-        methods.add_method("removeObject", |ctx, data, _: ()| Ok(todo!()));
+        methods.add_method_mut("addObject", |ctx, data, object: LuaAnyUserData| {
+            let object = object.borrow::<ObjectWrap>()?;
+            let object = object.inner.borrow().clone();
+
+            data.inner.insert_object(object);
+
+            Ok(())
+        });
+
+        methods.add_method_mut("removeObject", |ctx, data, id: LuaValue| {
+            let id = lvalue_to_objid(id)?;
+            data.inner.remove_object(id);
+
+            Ok(())
+        });
     }
 }
 
@@ -237,12 +350,7 @@ fn open_store_from_str(data: &[u8], kind: ObjectKind) -> Result<ObjectStoreWrap,
     Ok(ObjectStoreWrap { inner: object_data })
 }
 
-pub fn get_create_new_object_luafn(ctx: LuaContext) -> LuaFunction {
-    ctx.create_function(|ctx: LuaContext, (): ()| Ok(todo!()))
-        .unwrap()
-}
-
-pub fn get_open_store_from_str_luafn(ctx: LuaContext) -> LuaFunction {
+fn get_open_store_from_str_luafn(ctx: LuaContext) -> LuaFunction {
     ctx.create_function(|ctx: LuaContext, (data, ext): (LuaString, LuaString)| {
         let data = data.as_bytes();
         let kind = ObjectKind::from_ext(ext.to_str()?);
@@ -260,4 +368,14 @@ pub fn get_open_store_from_str_luafn(ctx: LuaContext) -> LuaFunction {
         Ok(wrap_result(ctx, result))
     })
     .unwrap()
+}
+
+pub fn get_object_module(ctx: LuaContext) -> LuaTable {
+    let table = ctx.create_table().unwrap();
+
+    table
+        .set("openStore", get_open_store_from_str_luafn(ctx))
+        .unwrap();
+
+    table
 }

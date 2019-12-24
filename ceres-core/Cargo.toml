@@ -16,6 +16,7 @@ err-derive = "0.2.1"
 walkdir = "2.2.9"
 itertools = "0.8.2"
 path-absolutize = "1.1.7"
+atoi = "0.3.2"
 
 ceres-mpq = "0.1.4"
 ceres-formats = {path = "../ceres-formats"}

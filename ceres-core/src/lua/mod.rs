@@ -100,15 +100,13 @@ pub fn setup_ceres_environ(
         .set("runWarcraft", launcher::get_runmap_luafn(ctx))
         .unwrap();
 
-    ceres_table
-        .set("loadObjects", object::get_open_store_from_str_luafn(ctx))
-        .unwrap();
-
     let fs_table = fs::get_fs_module(ctx);
     let mpq_table = mpq::get_mpq_module(ctx);
+    let object_table = object::get_object_module(ctx);
 
     globals.set("fs", fs_table).unwrap();
     globals.set("mpq", mpq_table).unwrap();
+    globals.set("objdata", object_table).unwrap();
     globals.set("ceres", ceres_table).unwrap();
 
     ctx.load(CERES_BUILDSCRIPT_LIB)

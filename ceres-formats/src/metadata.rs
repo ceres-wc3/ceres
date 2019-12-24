@@ -19,6 +19,32 @@ new_key_type! {
     struct FieldKey;
 }
 
+struct BasicInfo {
+    field_id:   ObjectId,
+    field_name: String,
+    value_ty:   String,
+    index:      i8,
+    is_profile: bool,
+}
+
+fn read_basic_info<'src>(row: &slk::Row<'src>, legend: &slk::Legend<'src>) -> BasicInfo {
+    let field_id = read_row_str(&row, legend, "ID").unwrap();
+    let field_name: String = read_row_str(&row, legend, "field").unwrap().into();
+    let value_ty: String = read_row_str(&row, legend, "type").unwrap().into();
+    let index: i8 = read_row_num(&row, legend, "index").unwrap_or(-1);
+    let slk = read_row_str(&row, legend, "slk").unwrap();
+
+    let field_id = ObjectId::from_bytes(field_id.as_bytes()).unwrap();
+
+    BasicInfo {
+        field_id,
+        field_name,
+        value_ty,
+        index,
+        is_profile: slk == "Profile",
+    }
+}
+
 #[derive(Debug, Serialize, Deserialize)]
 pub struct FieldDesc {
     pub id:           ObjectId,
@@ -28,6 +54,7 @@ pub struct FieldDesc {
     pub value_ty_raw: String,
     pub exclusive:    Option<Vec<ObjectId>>,
     pub kind:         ObjectKind,
+    pub is_profile:   bool,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -56,6 +83,7 @@ impl FieldVariant {
     pub fn is_leveled(&self) -> bool {
         match self {
             FieldVariant::Leveled { .. } => true,
+            FieldVariant::Data { .. } => true,
             _ => false,
         }
     }
@@ -90,44 +118,21 @@ fn data_char_to_id(input: u8) -> u8 {
     }
 }
 
-struct BasicInfo {
-    field_id:   ObjectId,
-    field_name: String,
-    value_ty:   String,
-    index:      i8,
-}
-
-fn read_basic_info<'src>(row: &slk::Row<'src>, legend: &slk::Legend<'src>) -> BasicInfo {
-    let field_id = read_row_str(&row, legend, "ID").unwrap();
-    let field_name: String = read_row_str(&row, legend, "field").unwrap().into();
-    let value_ty: String = read_row_str(&row, legend, "type").unwrap().into();
-    let index: i8 = read_row_num(&row, legend, "index").unwrap_or(-1);
-
-    let field_id = ObjectId::from_bytes(field_id.as_bytes()).unwrap();
-
-    BasicInfo {
-        field_id,
-        field_name,
-        value_ty,
-        index,
-    }
-}
-
 #[derive(Default, Debug, Serialize, Deserialize)]
 pub struct MetadataStore {
     // primary store for the fields
     // other collections in this struct hold references to FieldKeys returned by this
-    fields: SlotMap<FieldKey, FieldDesc>,
+    fields:            SlotMap<FieldKey, FieldDesc>,
     // for fields that are only present on certain objects (namely, ability Data fields),
     // this holds the association between objects and fields that are available only on them
     objects_with_data: HashMap<ObjectId, Vec<ObjectId>>,
     // mapping between field ids and field keys
-    ids_to_keys: HashMap<ObjectId, FieldKey>,
+    ids_to_keys:       HashMap<ObjectId, FieldKey>,
     // mapping between field names and field keys
     // multiple fields may be mapped to the same name,
     // namely if they belong to different objects or have different indices
     // so additional filtering must be performed
-    names_to_keys: BTreeMap<String, Vec<FieldKey>>,
+    names_to_keys:     BTreeMap<String, Vec<FieldKey>>,
 }
 
 impl MetadataStore {
@@ -136,10 +141,7 @@ impl MetadataStore {
         let name = field.variant.name().to_ascii_lowercase();
         let key = self.fields.insert(field);
         self.ids_to_keys.insert(id, key);
-        self.names_to_keys
-            .entry(name)
-            .or_default()
-            .push(key);
+        self.names_to_keys.entry(name).or_default().push(key);
     }
 
     fn insert_basic_field<'src>(
@@ -174,6 +176,7 @@ impl MetadataStore {
             exclusive: None,
             variant,
             kind,
+            is_profile: basic_info.is_profile,
         });
     }
 
@@ -204,6 +207,7 @@ impl MetadataStore {
             exclusive: None,
             variant,
             kind,
+            is_profile: basic_info.is_profile,
         });
     }
 
@@ -219,7 +223,7 @@ impl MetadataStore {
             leveled = repeat != 0;
         }
 
-        let variant = if basic_info.field_name == "data" {
+        let variant = if basic_info.field_name == "Data" {
             if data_id.is_none() {
                 return;
             }
@@ -261,6 +265,7 @@ impl MetadataStore {
             exclusive,
             index: basic_info.index,
             kind: ObjectKind::ABILITY,
+            is_profile: basic_info.is_profile,
         });
     }
 
@@ -303,22 +308,24 @@ impl MetadataStore {
     ) -> Option<(&FieldDesc, Option<u32>)> {
         let object_kind = object.kind();
         let object_id = object.id();
-        self.find_named_field(&field_name, |f| f.kind.contains(object_kind))
-            .map(|f| (f, None))
-            .or_else(|| {
-                split_by_digits(&field_name).and_then(|(name, raw_level)| {
-                    let level: u32 = raw_level.parse().unwrap();
+        self.find_named_field(&field_name, |f| {
+            !f.is_profile && f.kind.contains(object_kind)
+        })
+        .map(|f| (f, None))
+        .or_else(|| {
+            split_by_digits(&field_name).and_then(|(name, raw_level)| {
+                let level: u32 = raw_level.parse().unwrap();
 
-                    let field = if name.starts_with("Data") {
-                        let data_id = data_char_to_id(name.as_bytes()[4]);
-                        self.find_data_field(object_id, data_id)
-                    } else {
-                        self.find_named_field(name, |f| f.kind.contains(object_kind))
-                    };
+                let field = if name.starts_with("Data") {
+                    let data_id = data_char_to_id(name.as_bytes()[4]);
+                    self.find_data_field(object_id, data_id)
+                } else {
+                    self.find_named_field(name, |f| !f.is_profile && f.kind.contains(object_kind))
+                };
 
-                    field.map(|f| (f, Some(level)))
-                })
+                field.map(|f| (f, Some(level)))
             })
+        })
     }
 
     /// Queries a Profile field by it's name and target object.
@@ -335,11 +342,9 @@ impl MetadataStore {
         let object_kind = object.kind();
 
         self.find_named_field(&field_name, |f| {
-            f.kind.contains(object_kind) && (f.index == index || f.index == -1)
-        }).or_else(|| {
-            println!("{} {} {}", object.id(), field_name, index);
-            None
+            f.is_profile && f.kind.contains(object_kind) && (f.index == index || f.index == -1)
         })
+        .or_else(|| None)
     }
 
     pub fn query_object_field(&self, field_id: ObjectId, object: &Object) -> Option<&FieldDesc> {
@@ -381,6 +386,31 @@ impl MetadataStore {
                     true
                 }
             })
+    }
+
+    /// First tries to fetch a Profile/Func field in the format of
+    /// <field_name><index id>, e.g. Buttonpos1 resolving to abpx for units, and Buttonpos2 resolving to abpy,
+    /// if that fails then will try to grab an slk field using the regular approach
+    pub fn query_lua_field(
+        &self,
+        object: &Object,
+        name: &str,
+    ) -> Option<(&FieldDesc, Option<u32>)> {
+        split_by_digits(name)
+            .map(|(name, index)| {
+                (
+                    name,
+                    index
+                        .parse()
+                        .expect("field must not have leading non-numeric characters after digits"),
+                )
+            })
+            .or_else(|| Some((name, 0)))
+            .and_then(|(name, index)| {
+                self.query_profile_field(name, object, index)
+                    .map(|desc| (desc, None))
+            })
+            .or_else(|| self.query_slk_field(name, object))
     }
 
     pub fn field_by_id(&self, id: ObjectId) -> Option<&FieldDesc> {

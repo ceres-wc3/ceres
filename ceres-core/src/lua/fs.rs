@@ -30,9 +30,9 @@ fn validate_path(path: &str) -> Result<PathBuf, LuaFileError> {
     let path = PathBuf::from(&path);
 
     path.absolutize().map_err(|err| {
-        dbg!(LuaFileError::PathCanonizationFailed {
+        LuaFileError::PathCanonizationFailed {
             cause: IoError::new(path, err),
-        })
+        }
     })
 }
 

@@ -30,11 +30,9 @@ fn parse_entry_start(mut input: &[u8]) -> Option<&str> {
             return None;
         }
 
-        let c = input[input.len() - 1];
+        let (end, _) = input.iter().enumerate().find(|(_, c)| **c == b']')?;
 
-        if c == b']' {
-            return Some(from_utf8(&input[..input.len() - 1]).ok()?);
-        }
+        return Some(from_utf8(&input[..end]).ok()?);
     }
 
     None

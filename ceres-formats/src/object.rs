@@ -127,6 +127,18 @@ impl Object {
         })
     }
 
+    pub fn unset_simple_field(&mut self, id: ObjectId) {
+        self.fields.remove(&id);
+    }
+
+    pub fn unset_data_field(&mut self, id: ObjectId, level: u32, data: u8) {
+        if let Some(field) = self.fields.get_mut(&id) {
+            if let FieldKind::Data { values } = &mut field.kind {
+                values.retain(|dv| !(dv.level == level && dv.data_id == data))
+            }
+        }
+    }
+
     pub fn set_simple_field(&mut self, id: ObjectId, value: Value) {
         let kind = FieldKind::Simple { value };
         let field = Field { id, kind };
@@ -169,7 +181,7 @@ impl Object {
     /// Doesn't do field-level merging because it's not needed
     /// in our use case. Just override the fields in this object
     /// from the fields in the other.
-    pub fn merge_with(&mut self, other: &Object) {
+    pub fn add_from(&mut self, other: &Object) {
         for (id, field) in &other.fields {
             self.fields.insert(*id, field.clone());
         }
@@ -239,9 +251,14 @@ fn process_func_field(
     index: i8,
     metadata: &MetadataStore,
 ) -> Option<()> {
+
+    if object.id() == ObjectId::from_bytes(b"hfoo").unwrap() {
+        eprintln!("MMMM {} {} {}", key, value, index);
+    }
     let field_meta = metadata.query_profile_field(key, &object, index)?;
     let value = Value::from_str_and_ty(value, field_meta.value_ty)?;
     let field_id = field_meta.id;
+
 
     match field_meta.variant {
         FieldVariant::Normal { .. } => object.set_simple_field(field_id, value),
@@ -273,7 +290,7 @@ impl ObjectStore {
     pub fn add_from(&mut self, other: &ObjectStore) {
         for (id, other_object) in &other.objects {
             if let Some(object) = self.objects.get_mut(&id) {
-                object.borrow_mut().merge_with(&other_object.borrow());
+                object.borrow_mut().add_from(&other_object.borrow());
             } else {
                 let cloned = other_object.borrow().clone();
                 self.objects.insert(*id, Rc::new(RefCell::new(cloned)));
@@ -314,6 +331,12 @@ impl ObjectStore {
     }
 
     fn insert_func_entry(&mut self, entry: profile::Entry, metadata: &MetadataStore) -> Option<()> {
+//        eprintln!("{}", entry.id);
+//
+//        if entry.id == "hfoo" {
+//            eprintln!("HOHO")
+//        }
+
         let id = ObjectId::from_bytes(entry.id.as_bytes())?;
         let object = self.objects.get_mut(&id)?;
 
@@ -436,6 +459,29 @@ pub fn read_data_dir<P: AsRef<Path>>(path: P, metadata: &MetadataStore) -> Objec
         "units/undeadabilityfunc.txt",
         "units/undeadunitfunc.txt",
         "units/undeadupgradefunc.txt",
+        "units_en/campaignabilitystrings.txt",
+        "units_en/campaignunitstrings.txt",
+        "units_en/campaignupgradestrings.txt",
+        "units_en/commandstrings.txt",
+        "units_en/commonabilitystrings.txt",
+        "units_en/humanabilitystrings.txt",
+        "units_en/humanunitstrings.txt",
+        "units_en/humanupgradestrings.txt",
+        "units_en/itemabilitystrings.txt",
+        "units_en/itemstrings.txt",
+        "units_en/neutralabilitystrings.txt",
+        "units_en/neutralunitstrings.txt",
+        "units_en/neutralupgradestrings.txt",
+        "units_en/nightelfabilitystrings.txt",
+        "units_en/nightelfunitstrings.txt",
+        "units_en/nightelfupgradestrings.txt",
+        "units_en/orcabilitystrings.txt",
+        "units_en/orcunitstrings.txt",
+        "units_en/orcupgradestrings.txt",
+        "units_en/undeadabilitystrings.txt",
+        "units_en/undeadunitstrings.txt",
+        "units_en/undeadupgradestrings.txt",
+        "units_en/unitglobalstrings.txt",
     ];
 
     for file_path in PROFILES {
