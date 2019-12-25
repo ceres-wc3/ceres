@@ -174,6 +174,19 @@ impl ObjectKind {
         }
     }
 
+    pub fn to_ext(self) -> &'static str {
+        match self {
+            ObjectKind::UNIT => "w3u",
+            ObjectKind::ABILITY => "w3a",
+            ObjectKind::ITEM => "w3t",
+            ObjectKind::DESTRUCTABLE => "w3b",
+            ObjectKind::DOODAD => "w3d",
+            ObjectKind::BUFF => "w3h",
+            ObjectKind::UPGRADE => "w3q",
+            _ => "none",
+        }
+    }
+
     /// Returns true if the object type is capable
     /// of using data/leveled fields instead of just regular fields.
     ///

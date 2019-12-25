@@ -338,6 +338,8 @@ impl LuaObjectStoreWrapper {
                 b"__objects" => return Self::objects(ctx, data, kind),
                 b"readFromString" => return Ok(StaticMethods::read_fn(ctx)),
                 b"writeToString" => return Ok(StaticMethods::write_fn(ctx)),
+                b"ext" => return Ok(kind.to_ext().to_lua(ctx)?),
+                b"typestr" => return Ok(kind.to_typestr().to_lua(ctx)?),
                 _ => {}
             }
         }

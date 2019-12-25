@@ -165,7 +165,7 @@ fn get_isfile_luafn(ctx: LuaContext) -> LuaFunction {
     ctx.create_function(|_, path: String| {
         let path: PathBuf = path.into();
 
-        Ok(path.is_dir())
+        Ok(path.is_file())
     })
     .unwrap()
 }

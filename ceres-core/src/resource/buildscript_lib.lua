@@ -106,6 +106,43 @@ function mapMeta:writeToMpq(path)
     return creator:write(path)
 end
 
+local objectExtensions = {
+    "w3a", "w3t", "w3u", "w3b", "w3d", "w3h", "w3q"
+}
+
+function mapMeta:initObjectStorage(ext)
+    local result = self:readFile("war3map." .. ext)
+    local storage = objdata.newStore(ext)
+
+    if result then
+        storage:readFromString(result)
+    end
+
+    return storage
+end
+
+-- Initializes object storages for the map
+function mapMeta:initObjects()
+    local objects = {}
+    self.objects = objects
+
+    for _, v in pairs(objectExtensions) do
+        local data = self:initObjectStorage(v)
+        objects[data.typestr] = data
+    end
+end
+
+function mapMeta:commitObjectStorage(storage)
+    local data = storage:writeToString()
+    self:addFileString("war3map." .. storage.ext, data)
+end
+
+function mapMeta:commitObjects()
+    for _, v in pairs(self.objects) do
+        self:commitObjectStorage(v)
+    end
+end
+
 function ceres.openMap(name)
     local map = {
         added = {}
@@ -135,6 +172,8 @@ function ceres.openMap(name)
     end
 
     setmetatable(map, mapMeta)
+
+    map:initObjects()
 
     return map
 end
@@ -219,6 +258,8 @@ function ceres.buildMap(buildCommand)
     else
         map:addFileString("war3map.lua", script)
     end
+
+    map:commitObjects()
 
     log("Successfuly built the map")
 
