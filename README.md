@@ -36,7 +36,7 @@ The second point allows you to run arbitrary Lua code while the map is compiling
 - [x] Macro system
 - [x] Lua-based build system
 - [x] MPQ read/write API
-- [ ] APIs to edit map data (objects, description, title, imports, etc.)
+- [x] APIs to edit map data (objects, description, title, imports, etc.)
 - [ ] Standard WC3 Lua library 
 - [ ] Dependency manager (likely via git)
 - [ ] Beginner tutorial
