@@ -112,17 +112,17 @@ struct LuaObjectWrapper {
 impl LuaObjectWrapper {
     fn clone<'lua>(
         _ctx: LuaContext<'lua>,
-        (object, new_id): (LuaAnyUserData<'lua>, ObjectId),
+        object: LuaAnyUserData<'lua>,
     ) -> Result<impl ToLuaMulti<'lua>, LuaError> {
         let object = object.borrow::<LuaObjectWrapper>()?;
 
         let object = object.inner.borrow();
-        let mut new_object = Object::with_parent(
-            new_id,
-            object.parent_id().unwrap_or_else(|| object.id()),
+        let mut new_object = Object::new(
+            object.id(),
             object.kind(),
         );
 
+        new_object.set_parent_id(object.parent_id());
         new_object.add_from(&object);
 
         Ok(LuaObjectWrapper {
