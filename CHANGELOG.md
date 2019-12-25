@@ -1,4 +1,4 @@
-# 0.2.3
+# 0.2.4
 
 ### Object data manipulation
 * Build scripts (as well as compiletime macros) can now manipulate object data of the map
