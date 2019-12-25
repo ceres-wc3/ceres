@@ -45,7 +45,11 @@ pub fn lvalue_to_str(value: LuaValue) -> Option<String> {
                 Some("false".into())
             }
         }
-        LuaValue::String(s) => Some(format!("\"{}\"", s.to_str().unwrap())),
+        LuaValue::String(s) => {
+            let s = s.to_str().unwrap().escape_debug().to_string();
+
+            Some(format!("\"{}\"", s))
+        }
         LuaValue::Integer(i) => Some(i.to_string()),
         LuaValue::Number(n) => Some(n.to_string()),
         LuaValue::Table(t) => Some(ltable_to_str(t)),

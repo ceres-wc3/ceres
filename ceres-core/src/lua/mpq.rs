@@ -227,8 +227,6 @@ fn writeflow_adddir(
         builder
             .creator
             .add_file(relative_path.to_str().unwrap(), contents.unwrap(), options);
-
-        eprintln!("Added file {}", relative_path.to_str().unwrap());
     }
 
     Ok(true)

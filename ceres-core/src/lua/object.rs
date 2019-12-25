@@ -117,10 +117,7 @@ impl LuaObjectWrapper {
         let object = object.borrow::<LuaObjectWrapper>()?;
 
         let object = object.inner.borrow();
-        let mut new_object = Object::new(
-            object.id(),
-            object.kind(),
-        );
+        let mut new_object = Object::new(object.id(), object.kind());
 
         new_object.set_parent_id(object.parent_id());
         new_object.add_from(&object);
@@ -190,7 +187,7 @@ impl LuaObjectWrapper {
             let key = key.as_bytes();
 
             match key {
-                b"__fields" => return Ok(Self::fields(ctx, &object)?),
+                b"all" => return Ok(Self::fields(ctx, &object)?),
                 b"clone" => return Ok(StaticMethods::clone_fn(ctx)),
                 b"id" => return Ok(object.id().to_lua(ctx)?),
                 b"parentId" => return Ok(object.parent_id().to_lua(ctx)?),
@@ -335,7 +332,7 @@ impl LuaObjectStoreWrapper {
             let key = key.as_bytes();
 
             match key {
-                b"__objects" => return Self::objects(ctx, data, kind),
+                b"all" => return Self::objects(ctx, data, kind),
                 b"readFromString" => return Ok(StaticMethods::read_fn(ctx)),
                 b"writeToString" => return Ok(StaticMethods::write_fn(ctx)),
                 b"ext" => return Ok(kind.to_ext().to_lua(ctx)?),

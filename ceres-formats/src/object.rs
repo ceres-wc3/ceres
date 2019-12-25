@@ -93,7 +93,7 @@ impl Object {
     pub fn parent_id(&self) -> Option<ObjectId> {
         self.parent_id
     }
-    
+
     pub fn set_parent_id(&mut self, parent_id: Option<ObjectId>) {
         self.parent_id = parent_id
     }
