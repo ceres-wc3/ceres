@@ -122,7 +122,7 @@ pub struct ScriptCompiler<'lua, MO: ModuleProvider, MA: MacroProvider> {
     map_script: Option<String>,
 
     // map of modules that have already been compiled
-    compiled_modules: IndexMap<String, CompiledModule>,
+    compiled_modules:  IndexMap<String, CompiledModule>,
     // set of modules that are currently in compilation
     compiling_modules: HashSet<String>,
 

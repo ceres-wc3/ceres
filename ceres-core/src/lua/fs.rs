@@ -29,11 +29,10 @@ impl From<LuaFileError> for LuaError {
 fn validate_path(path: &str) -> Result<PathBuf, LuaFileError> {
     let path = PathBuf::from(&path);
 
-    path.absolutize().map_err(|err| {
-        LuaFileError::PathCanonizationFailed {
+    path.absolutize()
+        .map_err(|err| LuaFileError::PathCanonizationFailed {
             cause: IoError::new(path, err),
-        }
-    })
+        })
 }
 
 fn lua_write_file(path: &str, content: LuaString) -> Result<(), AnyError> {

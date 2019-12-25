@@ -63,7 +63,8 @@ where
     });
 
     if let Err(LuaError::ExternalError(cause)) = &result {
-        if let Some(LuaError::CallbackError {traceback, cause}) = cause.downcast_ref::<LuaError>() {
+        if let Some(LuaError::CallbackError { traceback, cause }) = cause.downcast_ref::<LuaError>()
+        {
             println!("[ERROR] An error occured while executing the script:");
             println!("{}", cause);
             println!("{}", traceback);

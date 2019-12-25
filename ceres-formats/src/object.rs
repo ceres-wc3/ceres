@@ -1,10 +1,4 @@
 use std::collections::BTreeMap;
-use std::fs;
-use std::iter::Extend;
-use std::path::Path;
-use std::rc::Rc;
-use std::cell::{RefCell, Ref};
-use std::ops::Deref;
 
 use serde::{Deserialize, Serialize};
 
@@ -12,9 +6,8 @@ use crate::metadata::FieldVariant;
 use crate::metadata::MetadataStore;
 use crate::ObjectId;
 use crate::ObjectKind;
-use crate::ValueType;
-use crate::parser::profile;
 use crate::parser::slk;
+use crate::ValueType;
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub enum Value {
@@ -45,16 +38,15 @@ impl Value {
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
-pub struct DataValue {
-    pub data_id: u8,
-    pub level:   u32,
-    pub value:   Value,
+pub struct LeveledValue {
+    pub level: u32,
+    pub value: Value,
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub enum FieldKind {
     Simple { value: Value },
-    Data { values: Vec<DataValue> },
+    Leveled { values: Vec<LeveledValue> },
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -94,8 +86,16 @@ impl Object {
         self.id
     }
 
+    pub fn set_id(&mut self, id: ObjectId) {
+        self.id = id
+    }
+
     pub fn parent_id(&self) -> Option<ObjectId> {
         self.parent_id
+    }
+    
+    pub fn set_parent_id(&mut self, parent_id: Option<ObjectId>) {
+        self.parent_id = parent_id
     }
 
     pub fn kind(&self) -> ObjectKind {
@@ -117,11 +117,11 @@ impl Object {
         })
     }
 
-    pub fn data_field(&self, id: ObjectId, level: u32, data: u8) -> Option<&Value> {
+    pub fn leveled_field(&self, id: ObjectId, level: u32) -> Option<&Value> {
         self.fields.get(&id).and_then(|field| match &field.kind {
-            FieldKind::Data { values } => values
+            FieldKind::Leveled { values } => values
                 .iter()
-                .find(|value| value.level == level && value.data_id == data)
+                .find(|value| value.level == level)
                 .map(|value| &value.value),
             _ => None,
         })
@@ -131,10 +131,10 @@ impl Object {
         self.fields.remove(&id);
     }
 
-    pub fn unset_data_field(&mut self, id: ObjectId, level: u32, data: u8) {
+    pub fn unset_leveled_field(&mut self, id: ObjectId, level: u32) {
         if let Some(field) = self.fields.get_mut(&id) {
-            if let FieldKind::Data { values } = &mut field.kind {
-                values.retain(|dv| !(dv.level == level && dv.data_id == data))
+            if let FieldKind::Leveled { values } = &mut field.kind {
+                values.retain(|dv| !(dv.level == level))
             }
         }
     }
@@ -145,10 +145,10 @@ impl Object {
         self.fields.insert(id, field);
     }
 
-    pub fn set_data_field(&mut self, id: ObjectId, level: u32, data: u8, value: Value) {
+    pub fn set_leveled_field(&mut self, id: ObjectId, level: u32, value: Value) {
         let field = self.fields.entry(id).or_insert_with(|| Field {
             id,
-            kind: FieldKind::Data {
+            kind: FieldKind::Leveled {
                 values: Default::default(),
             },
         });
@@ -158,17 +158,10 @@ impl Object {
                 "tried to insert data field {} for object {}, but a simple field {} already exists",
                 id, self.id, field.id
             ),
-            FieldKind::Data { values } => {
-                let new_value = DataValue {
-                    data_id: data,
-                    level,
-                    value,
-                };
+            FieldKind::Leveled { values } => {
+                let new_value = LeveledValue { level, value };
 
-                if let Some(value) = values
-                    .iter_mut()
-                    .find(|dv| dv.level == level && dv.data_id == data)
-                {
+                if let Some(value) = values.iter_mut().find(|dv| dv.level == level) {
                     *value = new_value;
                 } else {
                     values.push(new_value);
@@ -186,307 +179,46 @@ impl Object {
             self.fields.insert(*id, field.clone());
         }
     }
-}
 
-#[derive(Debug, Serialize, Deserialize)]
-pub struct ObjectStore {
-    objects: BTreeMap<ObjectId, Rc<RefCell<Object>>>,
-}
-
-#[derive(Debug, Serialize, Deserialize)]
-pub struct ObjectStoreStock {
-    objects: BTreeMap<ObjectId, Object>,
-}
-
-impl Default for ObjectStore {
-    fn default() -> ObjectStore {
-        ObjectStore {
-            objects: Default::default(),
-        }
-    }
-}
-
-impl Default for ObjectStoreStock {
-    fn default() -> ObjectStoreStock {
-        ObjectStoreStock {
-            objects: Default::default(),
-        }
-    }
-}
-
-fn process_slk_field(
-    object: &mut Object,
-    value: &slk::Value,
-    name: &str,
-    metadata: &MetadataStore,
-) -> Option<()> {
-    let (field_meta, level) = metadata.query_slk_field(name, &object)?;
-
-    let value = Value::from_str_and_ty(value.as_inner()?, field_meta.value_ty)?;
-    let field_id = field_meta.id;
-
-    match field_meta.variant {
-        FieldVariant::Normal { .. } => object.set_simple_field(field_id, value),
-        FieldVariant::Leveled { .. } => object.set_data_field(
-            field_id,
-            level.expect("field must have level specified"),
-            0,
-            value,
-        ),
-        FieldVariant::Data { id } => object.set_data_field(
-            field_id,
-            level.expect("field must have level specified"),
-            id,
-            value,
-        ),
-    }
-
-    Some(())
-}
-
-fn process_func_field(
-    object: &mut Object,
-    key: &str,
-    value: &str,
-    index: i8,
-    metadata: &MetadataStore,
-) -> Option<()> {
-
-    if object.id() == ObjectId::from_bytes(b"hfoo").unwrap() {
-        eprintln!("MMMM {} {} {}", key, value, index);
-    }
-    let field_meta = metadata.query_profile_field(key, &object, index)?;
-    let value = Value::from_str_and_ty(value, field_meta.value_ty)?;
-    let field_id = field_meta.id;
-
-
-    match field_meta.variant {
-        FieldVariant::Normal { .. } => object.set_simple_field(field_id, value),
-        FieldVariant::Leveled { .. } => object.set_data_field(field_id, 0, 0, value),
-        FieldVariant::Data { id } => object.set_data_field(field_id, 0, id, value),
-    }
-
-    Some(())
-}
-
-impl ObjectStore {
-    pub fn objects(&self) -> impl Iterator<Item = &Rc<RefCell<Object>>> {
-        self.objects.values()
-    }
-
-    pub fn object(&self, id: ObjectId) -> Option<&Rc<RefCell<Object>>> {
-        self.objects.get(&id)
-    }
-
-    pub fn insert_object(&mut self, object: Object) {
-        self.objects
-            .insert(object.id, Rc::new(RefCell::new(object)));
-    }
-
-    pub fn remove_object(&mut self, id: ObjectId) {
-        self.objects.remove(&id);
-    }
-
-    pub fn add_from(&mut self, other: &ObjectStore) {
-        for (id, other_object) in &other.objects {
-            if let Some(object) = self.objects.get_mut(&id) {
-                object.borrow_mut().add_from(&other_object.borrow());
-            } else {
-                let cloned = other_object.borrow().clone();
-                self.objects.insert(*id, Rc::new(RefCell::new(cloned)));
-            }
-        }
-    }
-
-    fn insert_slk_row<'src>(
+    pub(crate) fn process_slk_field(
         &mut self,
-        kind: ObjectKind,
-        row: slk::Row<'src>,
-        legend: &slk::Legend<'src>,
+        value: &slk::Value,
+        name: &str,
         metadata: &MetadataStore,
     ) -> Option<()> {
-        let id = row
-            .cells
-            .get(0)
-            .and_then(|c| c.value().as_str())
-            .and_then(|id| ObjectId::from_bytes(id.as_bytes()))?;
+        let (field_meta, level) = metadata.query_slk_field(name, &self)?;
 
-        let object = if kind == ObjectKind::empty() {
-            self.objects.get_mut(&id)?
+        let value = Value::from_str_and_ty(value.as_inner()?, field_meta.value_ty)?;
+        let field_id = field_meta.id;
+
+        match field_meta.variant {
+            FieldVariant::Normal { .. } => self.set_simple_field(field_id, value),
+            FieldVariant::Leveled { .. } | FieldVariant::Data { .. } => self.set_leveled_field(
+                field_id,
+                level.expect("field must have level specified"),
+                value,
+            ),
+        }
+
+        Some(())
+    }
+
+    pub(crate) fn process_func_field(
+        &mut self,
+        key: &str,
+        value: &str,
+        index: i8,
+        metadata: &MetadataStore,
+    ) -> Option<()> {
+        let (field_meta, level) = metadata.query_profile_field(key, &self, index)?;
+        let value = Value::from_str_and_ty(value, field_meta.value_ty)?;
+
+        if let Some(level) = level {
+            self.set_leveled_field(field_meta.id, level, value)
         } else {
-            self.objects
-                .entry(id)
-                .or_insert_with(|| Rc::new(RefCell::new(Object::new(id, kind))))
-        };
-
-        for (value, name) in row
-            .cells
-            .iter()
-            .filter_map(|cell| legend.name_by_cell(&cell).map(|name| (cell.value(), name)))
-        {
-            process_slk_field(&mut object.borrow_mut(), value, name, metadata);
+            self.set_simple_field(field_meta.id, value)
         }
 
         Some(())
     }
-
-    fn insert_func_entry(&mut self, entry: profile::Entry, metadata: &MetadataStore) -> Option<()> {
-//        eprintln!("{}", entry.id);
-//
-//        if entry.id == "hfoo" {
-//            eprintln!("HOHO")
-//        }
-
-        let id = ObjectId::from_bytes(entry.id.as_bytes())?;
-        let object = self.objects.get_mut(&id)?;
-
-        for (key, values) in entry.values {
-            for (index, value) in values.split(',').enumerate() {
-                process_func_field(&mut object.borrow_mut(), key, value, index as i8, metadata);
-            }
-        }
-
-        Some(())
-    }
-}
-
-impl ObjectStoreStock {
-    pub fn new(data: &ObjectStore) -> ObjectStoreStock {
-        let mut data_static = Self::default();
-        data_static.merge_from(data);
-        data_static
-    }
-
-    fn merge_from(&mut self, data: &ObjectStore) {
-        for object in data.objects() {
-            let object = object.borrow().clone();
-
-            self.objects.insert(object.id, object);
-        }
-    }
-
-    pub fn object(&self, id: ObjectId) -> Option<&Object> {
-        self.objects.get(&id)
-    }
-
-    /// Returns the 'prototype' for this object
-    /// which is the parent if its a custom object,
-    /// or the original if its a stock modified object
-    pub fn object_prototype(&self, object: &Object) -> Option<&Object> {
-        self.objects
-            .get(&object.id)
-            .or_else(|| object.parent_id.and_then(|pid| self.objects.get(&pid)))
-    }
-
-    pub fn objects(&self) -> impl Iterator<Item = &Object> {
-        self.objects.values()
-    }
-}
-
-fn read_func_file<P: AsRef<Path>>(path: P, metadata: &MetadataStore, data: &mut ObjectStore) {
-    dbg!(path.as_ref());
-
-    let src = fs::read(path).unwrap();
-    let entries = profile::Entries::new(&src);
-
-    for entry in entries {
-        data.insert_func_entry(entry, metadata);
-    }
-}
-
-fn read_slk_file<P: AsRef<Path>>(
-    path: P,
-    kind: ObjectKind,
-    metadata: &MetadataStore,
-    data: &mut ObjectStore,
-) {
-    dbg!(path.as_ref());
-    let src = fs::read(path).unwrap();
-    let mut table = slk::Table::new(&src).unwrap();
-    let legend = table.legend();
-
-    while table.has_next() {
-        if let Some(row) = table.next_row() {
-            data.insert_slk_row(kind, row, &legend, metadata);
-        }
-    }
-}
-
-pub fn read_data_dir<P: AsRef<Path>>(path: P, metadata: &MetadataStore) -> ObjectStore {
-    let path = path.as_ref();
-    let mut data = ObjectStore::default();
-
-    const SLKS: &[(ObjectKind, &str)] = &[
-        (ObjectKind::UNIT, "units/unitdata.slk"),
-        (ObjectKind::ABILITY, "units/abilitydata.slk"),
-        (ObjectKind::ITEM, "units/itemdata.slk"),
-        (ObjectKind::BUFF, "units/abilitybuffdata.slk"),
-        (ObjectKind::DESTRUCTABLE, "units/destructabledata.slk"),
-        (ObjectKind::UPGRADE, "units/upgradedata.slk"),
-        (ObjectKind::DOODAD, "doodads/doodads.slk"),
-        (ObjectKind::empty(), "units/unitbalance.slk"),
-        (ObjectKind::empty(), "units/unitabilities.slk"),
-        (ObjectKind::empty(), "units/unitweapons.slk"),
-        (ObjectKind::empty(), "units/unitui.slk"),
-    ];
-
-    for (kind, file_path) in SLKS {
-        read_slk_file(path.join(file_path), *kind, &metadata, &mut data);
-    }
-
-    const PROFILES: &[&str] = &[
-        "units/campaignabilityfunc.txt",
-        "units/campaignunitfunc.txt",
-        "units/campaignupgradefunc.txt",
-        "units/commandfunc.txt",
-        "units/commonabilityfunc.txt",
-        "units/humanabilityfunc.txt",
-        "units/humanunitfunc.txt",
-        "units/humanupgradefunc.txt",
-        "units/itemabilityfunc.txt",
-        "units/itemfunc.txt",
-        "units/miscdata.txt",
-        "units/miscgame.txt",
-        "units/neutralabilityfunc.txt",
-        "units/neutralunitfunc.txt",
-        "units/neutralupgradefunc.txt",
-        "units/nightelfabilityfunc.txt",
-        "units/nightelfunitfunc.txt",
-        "units/nightelfupgradefunc.txt",
-        "units/orcabilityfunc.txt",
-        "units/orcunitfunc.txt",
-        "units/orcupgradefunc.txt",
-        "units/undeadabilityfunc.txt",
-        "units/undeadunitfunc.txt",
-        "units/undeadupgradefunc.txt",
-        "units_en/campaignabilitystrings.txt",
-        "units_en/campaignunitstrings.txt",
-        "units_en/campaignupgradestrings.txt",
-        "units_en/commandstrings.txt",
-        "units_en/commonabilitystrings.txt",
-        "units_en/humanabilitystrings.txt",
-        "units_en/humanunitstrings.txt",
-        "units_en/humanupgradestrings.txt",
-        "units_en/itemabilitystrings.txt",
-        "units_en/itemstrings.txt",
-        "units_en/neutralabilitystrings.txt",
-        "units_en/neutralunitstrings.txt",
-        "units_en/neutralupgradestrings.txt",
-        "units_en/nightelfabilitystrings.txt",
-        "units_en/nightelfunitstrings.txt",
-        "units_en/nightelfupgradestrings.txt",
-        "units_en/orcabilitystrings.txt",
-        "units_en/orcunitstrings.txt",
-        "units_en/orcupgradestrings.txt",
-        "units_en/undeadabilitystrings.txt",
-        "units_en/undeadunitstrings.txt",
-        "units_en/undeadupgradestrings.txt",
-        "units_en/unitglobalstrings.txt",
-    ];
-
-    for file_path in PROFILES {
-        read_func_file(path.join(file_path), &metadata, &mut data);
-    }
-
-    data
 }

@@ -3,15 +3,15 @@ use std::path::PathBuf;
 use std::fs;
 
 use ceres_formats::metadata;
-use ceres_formats::object;
+use ceres_formats::objectstore;
 
 fn main() {
     let out_dir: PathBuf = env::var("OUT_DIR").unwrap().into();
     let crate_dir: PathBuf = env::var("CARGO_MANIFEST_DIR").unwrap().into();
 
     let meta = metadata::read_metadata_dir(crate_dir.join("data"));
-    let data = object::read_data_dir("data", &meta);
-    let data = object::ObjectStoreStock::new(&data);
+    let data = objectstore::read_data_dir("data", &meta);
+    let data = objectstore::ObjectStoreStock::new(&data);
 
     let mut file = fs::OpenOptions::new()
         .create(true)

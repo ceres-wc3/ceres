@@ -94,6 +94,13 @@ impl FieldVariant {
             _ => false,
         }
     }
+
+    pub fn data_id(&self) -> Option<u8> {
+        match self {
+            FieldVariant::Data { id } => Some(*id),
+            _ => None,
+        }
+    }
 }
 
 fn split_by_digits(input: &str) -> Option<(&str, &str)> {
@@ -331,18 +338,26 @@ impl MetadataStore {
     /// Queries a Profile field by it's name and target object.
     /// The object is necessary because the same field name can
     /// resolve to different fields depending on the object.
-    ///
-    /// Index should be specified when a Profile entry contains more than 1 value.
     pub fn query_profile_field(
         &self,
         field_name: &str,
         object: &Object,
         index: i8,
-    ) -> Option<&FieldDesc> {
+    ) -> Option<(&FieldDesc, Option<u32>)> {
         let object_kind = object.kind();
 
         self.find_named_field(&field_name, |f| {
-            f.is_profile && f.kind.contains(object_kind) && (f.index == index || f.index == -1)
+            f.is_profile
+                && f.kind.contains(object_kind)
+                && ((f.variant.is_normal() && (f.index == index || f.index == -1))
+                    || (f.variant.is_leveled() && (f.index == 0)))
+        })
+        .map(|f| {
+            if f.variant.is_leveled() {
+                (f, Some(index as u32))
+            } else {
+                (f, None)
+            }
         })
         .or_else(|| None)
     }
@@ -406,10 +421,7 @@ impl MetadataStore {
                 )
             })
             .or_else(|| Some((name, 0)))
-            .and_then(|(name, index)| {
-                self.query_profile_field(name, object, index)
-                    .map(|desc| (desc, None))
-            })
+            .and_then(|(name, index)| self.query_profile_field(name, object, index))
             .or_else(|| self.query_slk_field(name, object))
     }
 

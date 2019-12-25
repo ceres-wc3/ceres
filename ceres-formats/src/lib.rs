@@ -8,9 +8,12 @@ pub mod parser {
 pub mod error;
 pub mod metadata;
 pub mod object;
+pub mod objectstore;
 
 use serde::{Serialize, Deserialize};
 use bitflags::bitflags;
+use rlua::prelude::*;
+use anyhow::anyhow;
 
 #[derive(Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord, Serialize, Deserialize)]
 /// A WC3 object id, which is conceptually a simple 32-bit integer,
@@ -50,8 +53,6 @@ impl ObjectId {
     }
 }
 
-
-
 impl std::fmt::Debug for ObjectId {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         if self.id == 0 {
@@ -85,6 +86,34 @@ impl std::fmt::Display for ObjectId {
 impl From<u32> for ObjectId {
     fn from(other: u32) -> Self {
         Self { id: other }
+    }
+}
+
+impl<'lua> FromLua<'lua> for ObjectId {
+    fn from_lua(value: LuaValue<'lua>, _ctx: LuaContext<'lua>) -> Result<Self, LuaError> {
+        match value {
+            LuaValue::String(value) => ObjectId::from_bytes(value.as_bytes()).ok_or_else(|| {
+                LuaError::FromLuaConversionError {
+                    from:    "string",
+                    to:      "objectid",
+                    message: Some("invalid byte sequence for object id".into()),
+                }
+            }),
+            LuaValue::Integer(value) => Ok(ObjectId::new(value as u32)),
+            _ => Err(LuaError::external(anyhow!(
+                "only strings and integers can be converted to object ids"
+            ))),
+        }
+    }
+}
+
+impl<'lua> ToLua<'lua> for ObjectId {
+    fn to_lua(self, ctx: LuaContext<'lua>) -> Result<LuaValue<'lua>, LuaError> {
+        if let Some(value) = self.to_string() {
+            Ok(LuaValue::String(ctx.create_string(&value)?))
+        } else {
+            Ok(LuaValue::Integer(self.id as i64))
+        }
     }
 }
 
@@ -152,7 +181,7 @@ impl ObjectKind {
     pub fn is_data_type(self) -> bool {
         match self {
             ObjectKind::DOODAD | ObjectKind::ABILITY | ObjectKind::UPGRADE => true,
-            _ => false
+            _ => false,
         }
     }
 
@@ -165,7 +194,7 @@ impl ObjectKind {
             ObjectKind::DOODAD => "doodad",
             ObjectKind::BUFF => "buff",
             ObjectKind::UPGRADE => "upgrade",
-            _ => "none"
+            _ => "none",
         }
     }
 }

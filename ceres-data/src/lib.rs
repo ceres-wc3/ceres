@@ -1,5 +1,5 @@
 use lazy_static::lazy_static;
-use ceres_formats::object::ObjectStoreStock;
+use ceres_formats::objectstore::ObjectStoreStock;
 use ceres_formats::metadata::MetadataStore;
 
 const BUNDLED_DATA_BIN: &[u8] = include_bytes!(concat!(env!("OUT_DIR"), "/data.bin"));

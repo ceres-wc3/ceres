@@ -1,11 +1,10 @@
-use crate::ObjectKind;
-
 pub mod read {
     use byteorder::{BE, LE, ReadBytesExt};
 
     use crate::{ObjectId, ObjectKind};
     use crate::error::*;
-    use crate::object::{Object, ObjectStore, Value};
+    use crate::object::{Object, Value};
+    use crate::objectstore::ObjectStore;
 
     fn read_str<'src>(source: &mut &'src [u8]) -> Result<&'src [u8], ObjParseError> {
         let end = source
@@ -44,10 +43,14 @@ pub mod read {
             object.set_simple_field(field_id, value);
         } else {
             let level = source.read_u32::<LE>()?;
-            let data_id = source.read_u32::<LE>()?;
+            source.read_u32::<LE>()?;
             let value = read_value(source, field_type)?;
 
-            object.set_data_field(field_id, level, data_id as u8, value);
+            if level == 0 {
+                object.set_simple_field(field_id, value);
+            } else {
+                object.set_leveled_field(field_id, level, value);
+            }
         }
 
         // read trailing int
@@ -89,16 +92,16 @@ pub mod read {
     /// objects.
     pub fn read_object_file(
         mut source: &[u8],
+        data: &mut ObjectStore,
         kind: ObjectKind,
-    ) -> Result<ObjectStore, ObjParseError> {
+    ) -> Result<(), ObjParseError> {
         // skip version
         source.read_u32::<LE>()?;
-        let mut data = ObjectStore::default();
 
-        read_object_table(&mut source, &mut data, kind)?;
-        read_object_table(&mut source, &mut data, kind)?;
+        read_object_table(&mut source, data, kind)?;
+        read_object_table(&mut source, data, kind)?;
 
-        Ok(data)
+        Ok(())
     }
 }
 
@@ -109,24 +112,38 @@ pub mod write {
     use byteorder::{BE, LE, WriteBytesExt};
 
     use crate::{ObjectId, ObjectKind};
-    use crate::object::{FieldKind, Object, ObjectStore, Value};
+    use crate::object::{FieldKind, Object, Value};
+    use crate::objectstore::ObjectStore;
+    use crate::metadata::{MetadataStore, FieldDesc, FieldVariant};
 
     const W3OBJ_FORMAT_VERSION: u32 = 1;
 
     type FlatFieldItem<'a> = (ObjectId, u8, u32, &'a Value);
 
-    fn object_flat_fields_data(object: &Object) -> impl Iterator<Item = FlatFieldItem> {
-        object.fields().flat_map(|(id, field)| {
-            let a: Box<dyn Iterator<Item = FlatFieldItem>> = match &field.kind {
+    fn object_flat_fields_data<'a>(
+        object: &'a Object,
+        metadata: &'a MetadataStore,
+    ) -> impl Iterator<Item = FlatFieldItem<'a>> {
+        object.fields().flat_map(move |(id, field)| {
+            let iter: Box<dyn Iterator<Item = FlatFieldItem>> = match &field.kind {
                 FieldKind::Simple { value } => Box::new(std::iter::once((*id, 0, 0, value))),
-                FieldKind::Data { values } => Box::new(
-                    values
-                        .iter()
-                        .map(move |value| (*id, value.data_id, value.level, &value.value)),
-                ),
+                FieldKind::Leveled { values } => {
+                    if let Some(field_desc) = metadata.field_by_id((*id).clone()) {
+                        Box::new(values.iter().map(move |value| {
+                            (
+                                *id,
+                                field_desc.variant.data_id().unwrap_or(0),
+                                value.level,
+                                &value.value,
+                            )
+                        }))
+                    } else {
+                        Box::new(std::iter::empty())
+                    }
+                }
             };
 
-            a
+            iter
         })
     }
 
@@ -135,7 +152,7 @@ pub mod write {
             .fields()
             .filter_map(move |(id, field)| match &field.kind {
                 FieldKind::Simple { value } => Some((*id, value)),
-                FieldKind::Data { .. } => {
+                FieldKind::Leveled { .. } => {
                     eprintln!(
                         "unexpected data field in object {} for field {}",
                         object.id(),
@@ -197,8 +214,12 @@ pub mod write {
         Ok(())
     }
 
-    fn write_data_fields<W: Write>(mut writer: W, object: &Object) -> Result<(), IoError> {
-        let fields: Vec<_> = object_flat_fields_data(object).collect();
+    fn write_data_fields<W: Write>(
+        mut writer: W,
+        object: &Object,
+        metadata: &MetadataStore,
+    ) -> Result<(), IoError> {
+        let fields: Vec<_> = object_flat_fields_data(object, metadata).collect();
 
         writer.write_u32::<LE>(fields.len() as u32)?;
         for (id, data_id, level, value) in fields {
@@ -216,6 +237,7 @@ pub mod write {
 
     pub fn write_object_file<W: Write>(
         mut writer: W,
+        metadata: &MetadataStore,
         data: &ObjectStore,
         kind: ObjectKind,
     ) -> Result<(), IoError> {
@@ -242,7 +264,7 @@ pub mod write {
             writer.write_u32::<BE>(0)?;
 
             if kind.is_data_type() {
-                write_data_fields(&mut writer, &object)?;
+                write_data_fields(&mut writer, &object, metadata)?;
             } else {
                 write_simple_fields(&mut writer, &object)?;
             }
@@ -255,7 +277,7 @@ pub mod write {
             writer.write_u32::<BE>(object.id().to_u32())?;
 
             if kind.is_data_type() {
-                write_data_fields(&mut writer, &object)?;
+                write_data_fields(&mut writer, &object, metadata)?;
             } else {
                 write_simple_fields(&mut writer, &object)?;
             }

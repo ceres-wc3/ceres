@@ -20,11 +20,11 @@ use crate::CeresRunMode;
 #[derive(Serialize, Deserialize)]
 struct ProjectLayout {
     #[serde(rename = "mapsDirectory")]
-    maps_directory: String,
+    maps_directory:   String,
     #[serde(rename = "srcDirectory")]
-    src_directory: String,
+    src_directory:    String,
     #[serde(rename = "libDirectory")]
-    lib_directory: String,
+    lib_directory:    String,
     #[serde(rename = "targetDirectory")]
     target_directory: String,
 }

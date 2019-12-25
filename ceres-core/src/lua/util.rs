@@ -1,7 +1,10 @@
 use rlua::prelude::*;
 use pest::iterators::Pair;
+
 use ceres_parsers::lua;
-use ceres_formats::ObjectId;
+use ceres_formats::{ObjectId, ValueType};
+use ceres_formats::object::Value;
+use ceres_formats::metadata::FieldDesc;
 
 use crate::error::*;
 
@@ -104,4 +107,25 @@ pub fn lvalue_to_objid(value: LuaValue) -> Result<ObjectId, LuaError> {
         LuaValue::Integer(value) => Ok(ObjectId::new(value as u32)),
         _ => Err(StringError::new("cannot coerce type to object id").into()),
     }
+}
+
+pub fn value_to_lvalue<'lua>(ctx: LuaContext<'lua>, value: &Value) -> LuaValue<'lua> {
+    match value {
+        Value::Unreal(value) | Value::Real(value) => LuaValue::Number(*value as LuaNumber),
+        Value::Int(value) => LuaValue::Integer(*value as LuaInteger),
+        Value::String(value) => LuaValue::String(ctx.create_string(value).unwrap()),
+    }
+}
+
+pub fn lvalue_to_value<'lua>(
+    ctx: LuaContext<'lua>,
+    value: LuaValue<'lua>,
+    field_meta: &FieldDesc,
+) -> Result<Value, LuaError> {
+    Ok(match field_meta.value_ty {
+        ValueType::String => Value::String(FromLua::from_lua(value, ctx)?),
+        ValueType::Int => Value::Int(FromLua::from_lua(value, ctx)?),
+        ValueType::Real => Value::Real(FromLua::from_lua(value, ctx)?),
+        ValueType::Unreal => Value::Unreal(FromLua::from_lua(value, ctx)?),
+    })
 }

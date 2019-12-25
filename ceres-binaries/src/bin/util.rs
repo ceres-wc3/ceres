@@ -6,6 +6,7 @@ use clap::clap_app;
 use anyhow::Result;
 
 use ceres_formats::*;
+use ceres_formats::objectstore::ObjectStore;
 
 fn main() {
     dotenv::dotenv().ok();
@@ -79,7 +80,7 @@ fn run(matches: clap::ArgMatches) -> Result<()> {
 
     let meta = metadata::read_metadata_dir(&data_dir);
     eprintln!("loaded metadata information");
-    let data = object::read_data_dir(&data_dir, &meta);
+    let data = objectstore::read_data_dir(&data_dir, &meta);
     eprintln!("loaded data information");
 
     if let Some(arg) = matches.subcommand_matches("dump") {
@@ -96,27 +97,32 @@ fn run(matches: clap::ArgMatches) -> Result<()> {
         let file_path: PathBuf = arg.value_of("FILE").unwrap().into();
         let format = arg.value_of("format").unwrap_or_else(|| "dbg");
         let kind = file_path.extension().unwrap().to_string_lossy();
+        let mut data = ObjectStore::default();
 
-        let obj = parser::w3obj::read::read_object_file(
+        parser::w3obj::read::read_object_file(
             &fs::read(&file_path)?,
+            &mut data,
             ObjectKind::from_ext(&kind),
         )?;
 
-        serialize_obj(&obj, format);
+        serialize_obj(&data, format);
     } else if let Some(_arg) = matches.subcommand_matches("dbg") {
         dbg!(meta.field_by_id(ObjectId::from_bytes(b"amac").unwrap()));
     } else if let Some(arg) = matches.subcommand_matches("rwobj") {
         let file_path: PathBuf = arg.value_of("FILE").unwrap().into();
         let kind = file_path.extension().unwrap().to_string_lossy();
+        let mut data = ObjectStore::default();
 
-        let obj = parser::w3obj::read::read_object_file(
+        parser::w3obj::read::read_object_file(
             &fs::read(&file_path)?,
+            &mut data,
             ObjectKind::from_ext(&kind),
         )?;
 
         parser::w3obj::write::write_object_file(
             std::io::stdout(),
-            &obj,
+            &meta,
+            &data,
             ObjectKind::from_ext(&kind),
         )?;
     }
