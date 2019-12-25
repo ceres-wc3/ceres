@@ -24,18 +24,6 @@ pub enum CeresRunMode {
     LiveReload,
 }
 
-fn send_manifest_data(port: u16) {
-    use std::net::TcpStream;
-
-    use std::io::Write;
-
-    let mut connection = TcpStream::connect(("localhost", port)).unwrap();
-
-    println!("Woof woof");
-
-    write!(connection, "Hello World!").unwrap();
-}
-
 pub fn execute_script<F>(
     run_mode: CeresRunMode,
     script_args: Vec<&str>,

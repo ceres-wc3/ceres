@@ -49,7 +49,7 @@ end
 -- This doesn't modify the map in any way, it only adds the file to be written when either
 -- map:writeToDir() or map:writeToMpq() is called
 function mapMeta:addFileDisk(archivePath, filePath)
-    self.added[path] = {
+    self.added[archivePath] = {
         kind = "file",
         path = filePath
     }
