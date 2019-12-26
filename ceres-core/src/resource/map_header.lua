@@ -2,7 +2,20 @@
 local ceres = {}
 local __modules = {}
 
+
 do
+    local function print(...)
+        local args = {...}
+        local msgs = {}
+
+        for k, v in pairs(args) do
+            table.insert(msgs, tostring(v))
+        end
+
+        local msg = table.concat(msgs, " ")
+        DisplayTimedTextToPlayer(GetLocalPlayer(), 0, 0, 60, msg)
+    end
+
     local __ceres_hooks = {
         ["main::before"] = {},
         ["main::after"] = {},
@@ -16,8 +29,8 @@ do
         end
     end
 
-    local __ceres_customMain = nil
-    local __ceres_customConfig = nil
+    local __ceres_customMain
+    local __ceres_customConfig
 
     local function __ceresMain()
         __ceres_hookCall("main::before")
@@ -82,18 +95,30 @@ do
     end
 
     function ceres.init()
-        ceres.__oldMain = main
-        ceres.__oldConfig = config
-    
+        ceres.__oldMain = main or function() end
+        ceres.__oldConfig = config or function() end
+
+        local success, error
         function main()
-            __ceresMain()
+            if not success then
+                print("|c00ff0000CRITICAL ERROR:|r Main map script failed to load:\n")
+                print(tostring(error))
+                print("Falling back to original map script.")
+                ceres.__oldMain()
+            else
+                __ceresMain()
+            end
         end
     
         function config()
-            __ceresConfig()
+            if error ~= nil then
+                ceres.__oldConfig()
+            else
+                __ceresConfig()
+            end
         end
     
-        ceres.catch(require("main"))
+        success, error = pcall(require, "main")
     end
 end
 --[[ ceres map header end ]]

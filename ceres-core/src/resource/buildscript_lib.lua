@@ -255,11 +255,12 @@ function ceres.buildMap(buildCommand)
         log("ERR: Map build failed:")
         log(errorMsg)
         return false
-    else
-        map:addFileString("war3map.lua", script)
     end
 
-    map:commitObjects()
+    if map ~= nil then
+        map:addFileString("war3map.lua", script)
+        map:commitObjects()
+    end
 
     log("Successfuly built the map")
 
