@@ -1,3 +1,9 @@
+# 0.2.5
+
+* Fixed a bug with script-only compilation
+* Made some adjustments to the default build script and header file
+* Bumped the version of `ceres-mpq` to 0.1.6, fixing some bugs in the MPQ implementation
+
 # 0.2.4
 
 ### Object data manipulation
