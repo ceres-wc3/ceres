@@ -10,6 +10,8 @@ end
 
 -- macro support
 function define(id, value)
+    _G.id = function() end
+
     if type(value) == "function" then
         ceres.registerMacro(id, value)
     else
@@ -20,6 +22,47 @@ function define(id, value)
 end
 
 ceres.registerMacro("macro_define", define)
+
+function macro_define() end
+function compiletime() end
+
+-- hooks
+
+local postScriptBuildHooks = {}
+local postMapBuildHooks = {}
+local postRunHooks = {}
+
+local function callHooks(t)
+    for k, v in ipairs(t) do
+        local _, error = pcall(v.callback)
+        if error ~= nil then
+            log("error in hook")
+            log(error)
+        end
+    end
+end
+
+local function addHook(hookTable, hookName, callback)
+    for i, v in ipairs(hookTable) do
+        if v.name == hookName then
+            v.callback = callback
+            return
+        end
+    end
+    table.insert(hookTable, {name = hookName, callback = callback})
+end
+
+function ceres.addPostScriptBuildHook(name, callback)
+    addHook(postScriptBuildHooks, name, callback)
+end
+
+function ceres.addPostMapBuildHook(name, callback)
+    addHook(postMapBuildHooks, name, callback)
+end
+
+function ceres.addPostRunHook(name, callback)
+    addHook(postRunHooks, name, callback)
+end
 
 -- map library
 
@@ -194,6 +237,8 @@ ceres.layout = {
 -- Takes a single "build command" specifying
 -- what and how to build.
 function ceres.buildMap(buildCommand)
+    _G.lastBuildCommand = buildCommand
+
     local map, mapScript
     local mapName = buildCommand.input
     local outputType = buildCommand.output
@@ -251,6 +296,8 @@ function ceres.buildMap(buildCommand)
         mapScript = mapScript or ""
     }
 
+    callHooks(postScriptBuildHooks)
+
     if errorMsg ~= nil then
         log("ERR: Map build failed:")
         log(errorMsg)
@@ -262,21 +309,29 @@ function ceres.buildMap(buildCommand)
         map:commitObjects()
     end
 
+    callHooks(postMapBuildHooks)
+
     log("Successfuly built the map")
 
+    local artifact = {}
+
     local errorMsg
-    local artifactPath
     if outputType == "script" then
         log("Writing artifact [script] to " .. ceres.layout.targetDirectory .. "war3map.lua")
+        artifact.type = "script"
+        artifact.path = ceres.layout.targetDirectory .. "war3map.lua"
+        artifact.content = script
         _, errorMsg = fs.writeFile(ceres.layout.targetDirectory .. "war3map.lua", script)
     elseif outputType == "mpq" then
-        artifactPath = ceres.layout.targetDirectory .. mapName
-        log("Writing artifact [mpq] to " .. artifactPath)
-        _, errorMsg = map:writeToMpq(artifactPath)
+        artifact.type = "mpq"
+        artifact.path = ceres.layout.targetDirectory .. mapName
+        log("Writing artifact [mpq] to " .. artifact.path)
+        _, errorMsg = map:writeToMpq(artifact.path)
     elseif outputType == "dir" then
-        artifactPath = ceres.layout.targetDirectory .. mapName .. ".dir/"
-        log("Writing artifact [dir] to " .. artifactPath)
-        _, errorMsg = map:writeToDir(artifactPath)
+        artifact.type = "dir"
+        artifact.path = ceres.layout.targetDirectory .. mapName .. ".dir/"
+        log("Writing artifact [dir] to " .. artifact.path)
+        _, errorMsg = map:writeToDir(artifact.path)
     end
 
     if errorMsg ~= nil then
@@ -284,7 +339,7 @@ function ceres.buildMap(buildCommand)
         return false
     else
         log("Build complete!")
-        return artifactPath
+        return artifact
     end
 end
 
@@ -339,20 +394,22 @@ function ceres.defaultHandler()
     local outputType = arg.value("--output") or "mpq"
     local noKeepScript = arg.exists("--no-map-script") or false
 
-    local artifactPath = ceres.buildMap {
+    package.path = package.path .. ";./" .. ceres.layout.srcDirectory .. "/?.lua;./" .. ceres.layout.libDirectory .. "/?.lua"
+
+    local artifact = ceres.buildMap {
         input = mapArg,
         output = outputType,
         retainMapScript = not noKeepScript
     }
 
     if ceres.runMode() == "run" then
-        if artifactPath == nil then
+        if artifact == nil or artifact.type == "script" then
             log("WARN: Runmap was requested, but the current build did not produce a runnable artifact...")
         elseif ceres.runConfig == nil then
             log("WARN: Runmap was requested, but ceres.runConfig is nil!")
         else
             log("Runmap was requested, running the map...")
-            ceres.runMap(artifactPath)
+            ceres.runMap(artifact.path)
         end
     end
 end
@@ -362,5 +419,8 @@ function ceres.runMap(path)
     if errorMsg ~= nil then
         log("WARN: Running the map failed.")
         log(errorMsg)
+        return
     end
+
+    callHooks(postRunHooks)
 end

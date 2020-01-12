@@ -191,6 +191,8 @@ impl MetadataStore {
         let basic_info = read_basic_info(&row, &legend);
 
         let use_unit: u8 = read_row_num(&row, legend, "useUnit").unwrap_or(0);
+        let use_bld: u8 = read_row_num(&row, legend, "useBuilding").unwrap_or(0);
+        let use_hero: u8 = read_row_num(&row, legend, "useHero").unwrap_or(0);
         let use_item: u8 = read_row_num(&row, legend, "useItem").unwrap_or(0);
 
         let mut kind = ObjectKind::empty();
@@ -198,7 +200,7 @@ impl MetadataStore {
             kind |= ObjectKind::ITEM
         }
 
-        if use_unit != 0 {
+        if (use_unit != 0) || (use_bld != 0) || (use_hero != 0) {
             kind |= ObjectKind::UNIT
         }
 

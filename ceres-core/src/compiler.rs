@@ -167,14 +167,11 @@ impl<'lua, MO: ModuleProvider, MA: MacroProvider> ScriptCompiler<'lua, MO, MA> {
         for (id, compiled_module) in self.compiled_modules.iter() {
             let module_header_comment = format!("--[[ start of module \"{}\" ]]\n", id);
             let module_header = format!(
-                r#"__modules["{name}"] = {{initialized = false, cached = nil, loader = function()"#,
+                r#"ceres.modules["{name}"] = {{initialized = false, cached = nil, source = [================["#,
                 name = id
             );
-            let module_source = format!(
-                "\n    {}\n",
-                compiled_module.src.replace("\n", "\n    ").trim()
-            );
-            let module_footer = "end}\n";
+            let module_source = format!("\n{}\n", compiled_module.src);
+            let module_footer = "]================]}\n";
             let module_footer_comment = format!("--[[ end of module \"{}\" ]]\n\n", id);
 
             out += &module_header_comment;
@@ -192,7 +189,7 @@ impl<'lua, MO: ModuleProvider, MA: MacroProvider> ScriptCompiler<'lua, MO, MA> {
 
     /// tries to find and compile the given module by it's module name
     /// using the ModuleProvider
-    pub fn add_module(&mut self, module_name: &str) -> Result<(), CompilerError> {
+    pub fn add_module(&mut self, module_name: &str, optional: bool) -> Result<(), CompilerError> {
         if self.compiling_modules.contains(module_name) {
             return Err(CompilerError::CyclicalDependency {
                 module_name: module_name.into(),
@@ -206,9 +203,13 @@ impl<'lua, MO: ModuleProvider, MA: MacroProvider> ScriptCompiler<'lua, MO, MA> {
         let src = self.module_provider.module_src(module_name);
 
         if src.is_none() {
-            return Err(CompilerError::ModuleNotFound {
-                module_name: module_name.into(),
-            });
+            if optional {
+                return Ok(());
+            } else {
+                return Err(CompilerError::ModuleNotFound {
+                    module_name: module_name.into(),
+                });
+            }
         }
 
         let src = src.unwrap();
@@ -270,7 +271,7 @@ impl<'lua, MO: ModuleProvider, MA: MacroProvider> ScriptCompiler<'lua, MO, MA> {
                 compilation_data.src += &src[emitted_index..invocation.span_start];
                 emitted_index = invocation.span_end;
 
-                self.handle_macro(&mut compilation_data, invocation)
+                self.handle_macro(src, &mut compilation_data, invocation)
                     .map_err(|err| match err {
                         MacroInvocationError::CompilerError { error } => error,
                         _ => CompilerError::MacroError {
@@ -303,10 +304,15 @@ impl<'lua, MO: ModuleProvider, MA: MacroProvider> ScriptCompiler<'lua, MO, MA> {
 
     fn handle_macro(
         &mut self,
+        src: &str,
         compilation_data: &mut CompilationData,
         macro_invocation: MacroInvocation,
     ) -> Result<(), MacroInvocationError> {
         let id = macro_invocation.id;
+        let newline_count = src[macro_invocation.span_start..macro_invocation.span_end]
+            .chars()
+            .filter(|c| *c == '\n')
+            .count();
 
         match id {
             "require" => self.handle_macro_require(compilation_data, macro_invocation)?,
@@ -318,6 +324,8 @@ impl<'lua, MO: ModuleProvider, MA: MacroProvider> ScriptCompiler<'lua, MO, MA> {
                 macro_invocation,
             )?,
         }
+
+        compilation_data.src += &("\n").repeat(newline_count);
 
         Ok(())
     }
@@ -335,10 +343,24 @@ impl<'lua, MO: ModuleProvider, MA: MacroProvider> ScriptCompiler<'lua, MO, MA> {
             ));
         }
 
+        let optional = if args.len() >= 2 {
+            if let LuaValue::Boolean(optional) = &args[1] {
+                *optional
+            } else {
+                false
+            }
+        } else {
+            false
+        };
+
         if let LuaValue::String(module_name) = &args[0] {
             let module_name = module_name.to_str().unwrap();
-            compilation_data.src += &format!("require(\"{}\")", module_name);
-            self.add_module(module_name)?;
+            if optional {
+                compilation_data.src += &format!("require(\"{}\", true)", module_name)
+            } else {
+                compilation_data.src += &format!("require(\"{}\")", module_name);
+            }
+            self.add_module(module_name, optional)?;
         } else {
             return Err(MacroInvocationError::message(
                 "Require macro's first argument must be a string".into(),

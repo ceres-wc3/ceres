@@ -1,6 +1,9 @@
 use std::path::PathBuf;
 use std::fs;
+use std::sync::mpsc;
+use std::time::Duration;
 
+use notify::{Watcher, RecursiveMode, DebouncedEvent, watcher};
 use rlua::prelude::*;
 use err_derive::Error;
 use path_absolutize::Absolutize;
@@ -125,6 +128,34 @@ fn lua_absolutize_path(path: &str) -> Result<String, AnyError> {
     Ok(path.absolutize()?.to_str().unwrap().into())
 }
 
+fn lua_watch_file<'lua>(ctx: LuaContext<'lua>, path: &str, callback: LuaFunction<'lua>) -> Result<(), AnyError> {
+    let (tx, rx) = mpsc::channel();
+    let mut watcher = watcher(tx, Duration::from_millis(100))?;
+
+    fs::write(path, "")?;
+    watcher.watch(path, RecursiveMode::NonRecursive)?;
+
+    loop {
+        match rx.recv() {
+            Ok(event) => {
+                match event {
+                    DebouncedEvent::Write(path) | DebouncedEvent::Create(path) => {
+                        let data = fs::read(path)?;
+                        callback.call::<_, ()>(LuaValue::String(ctx.create_string(&data)?))?;
+                    },
+                    _ => {}
+                }
+            },
+            Err(err) => {
+                eprintln!("Error while watching file: {}", err);
+                break;
+            }
+        }
+    }
+
+    Ok(())
+}
+
 fn get_writefile_luafn(ctx: LuaContext) -> LuaFunction {
     ctx.create_function(move |ctx, (path, content): (String, LuaString)| {
         let result = lua_write_file(&path, content).map(|_| true);
@@ -197,6 +228,15 @@ fn get_copydir_luafn(ctx: LuaContext) -> LuaFunction {
     .unwrap()
 }
 
+fn get_filewatch_luafn(ctx: LuaContext) -> LuaFunction {
+    ctx.create_function(|ctx, (target, callback): (String, LuaFunction)| {
+        let result = lua_watch_file(ctx, &target, callback);
+
+        Ok(wrap_result(ctx, result))
+    })
+    .unwrap()
+}
+
 pub fn get_fs_module(ctx: LuaContext) -> LuaTable {
     let table = ctx.create_table().unwrap();
 
@@ -208,6 +248,7 @@ pub fn get_fs_module(ctx: LuaContext) -> LuaTable {
     table.set("exists", get_exists_luafn(ctx)).unwrap();
     table.set("absolutize", get_absolutize_luafn(ctx)).unwrap();
     table.set("copyDir", get_copydir_luafn(ctx)).unwrap();
+    table.set("watchFile", get_filewatch_luafn(ctx)).unwrap();
 
     table
 }

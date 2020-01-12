@@ -17,6 +17,7 @@ walkdir = "2.2.9"
 itertools = "0.8.2"
 path-absolutize = "1.1.7"
 atoi = "0.3.2"
+notify = "4.0"
 
 # error handling
 thiserror = "1.0.9"

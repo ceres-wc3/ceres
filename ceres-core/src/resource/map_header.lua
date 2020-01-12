@@ -1,10 +1,11 @@
 --[[ ceres map header start ]]
-local ceres = {}
-local __modules = {}
+ceres = ceres or {}
+ceres.modules = {}
 
+ceres.initialized = ceres.initialized or false
 
 do
-    local function print(...)
+    function _G.print(...)
         local args = {...}
         local msgs = {}
 
@@ -16,52 +17,23 @@ do
         DisplayTimedTextToPlayer(GetLocalPlayer(), 0, 0, 60, msg)
     end
 
-    local __ceres_hooks = {
-        ["main::before"] = {},
-        ["main::after"] = {},
-        ["config::before"] = {},
-        ["config::after"] = {}
+    ceres.hooks = ceres.hooks or {
+        ["reload::before"] = {},
+        ["reload::after"] = {},
     }
 
-    local function __ceres_hookCall(hookName)
-        for _, callback in ipairs(__ceres_hooks[hookName]) do
+    function ceres.hookCall(hookName)
+        for _, callback in ipairs(ceres.hooks[hookName]) do
             callback()
         end
     end
 
-    local __ceres_customMain
-    local __ceres_customConfig
-
-    local function __ceresMain()
-        __ceres_hookCall("main::before")
-        if __ceres_customMain ~= nil then
-            __ceres_customMain()
-        else
-            ceres.__oldMain()
-        end
-        __ceres_hookCall("main::after")
-    end
-
-    local function __ceresConfig()
-        __ceres_hookCall("config::before")
-        if __ceres_customConfig ~= nil then
-            __ceres_customConfig()
-        else
-            ceres.__oldConfig()
-        end
-        __ceres_hookCall("config::after")
-    end
-
     function ceres.addHook(hookName, callback)
-        table.insert(__ceres_hooks[hookName], ceres.wrapCatch(callback))
-    end
+        if not ceres.hooks[hookName] then
+            error(("can't register non-existent Ceres hook '%s'"):format(hookName))
+        end
 
-    function ceres.setMain(callback)
-        __ceres_customMain = callback
-    end
-
-    function ceres.setConfig(callback)
-        __ceres_customConfig = callback
+        table.insert(ceres.hooks[hookName], ceres.wrapCatch(callback))
     end
 
     function ceres.catch(callback, ...)
@@ -69,6 +41,8 @@ do
 
         if not success then
             print("ERROR: " .. err)
+        else
+            return err
         end
     end
 
@@ -78,47 +52,77 @@ do
         end
     end
 
-    require = function(name)
-        local module = __modules[name]
+    _G.require = function(name, optional)
+        local module = ceres.modules[name]
 
         if module ~= nil then
             if module.initialized then
                 return module.cached
             else
                 module.initialized = true
-                module.cached = module.loader()
+                local compiled, error = load(module.source, "module " .. name)
+                if not compiled then
+                    error("failed to compile module " .. name .. ": " .. error)
+                end
+
+                module.cached = compiled()
                 return module.cached
             end
-        else
+        elseif not optional then
             error("module not found")
         end
     end
 
     function ceres.init()
-        ceres.__oldMain = main or function() end
-        ceres.__oldConfig = config or function() end
+        if not ceres.initialized then
+            ceres.oldMain = main or function() end
+            ceres.oldConfig = config or function() end
 
-        local success, error
-        function main()
+            local success, err
+            function _G.main()
+                if ceres.modules["init"] and not success then
+                    print("|c00ff0000CRITICAL ERROR:|r Init script failed to load:\n")
+                    print(err)
+                end
+
+                if ceres.modules["main"] then
+                    local result = ceres.catch(require, "main")
+                    if not result then
+                        ceres.catch(ceres.oldMain)
+                    end
+                else
+                    ceres.catch(ceres.oldMain)
+                end
+
+                ceres.initialized = true
+            end
+
+            function _G.config()
+                if ceres.modules["config"] then
+                    local result = ceres.catch(require, "config")
+                    if not result then
+                        ceres.catch(ceres.oldConfig)
+                    end
+                else
+                    ceres.catch(ceres.oldConfig)
+                end
+            end
+
+            if ceres.modules["init"] then
+                success, err = pcall(require, "init")
+            end
+        else
+            ceres.hookCall("reload::before")
+            ceres.hooks["reload::before"] = {}
+            ceres.hooks["reload::after"] = {}
+            local success, error = pcall(require, "main")
             if not success then
-                print("|c00ff0000CRITICAL ERROR:|r Main map script failed to load:\n")
+                print("|c00ff0000CRITICAL ERROR:|r Main map script failed to REload:\n")
                 print(tostring(error))
-                print("Falling back to original map script.")
-                ceres.__oldMain()
-            else
-                __ceresMain()
+                return
             end
+            ceres.hookCall("reload::after")
         end
-    
-        function config()
-            if error ~= nil then
-                ceres.__oldConfig()
-            else
-                __ceresConfig()
-            end
-        end
-    
-        success, error = pcall(require, "main")
     end
 end
 --[[ ceres map header end ]]

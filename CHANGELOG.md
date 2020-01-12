@@ -1,3 +1,23 @@
+# 0.3.0
+
+__Significant breaking changes in this release!__
+
+## Breaking changes
+* Changed the way the generated map script works. Now all code `require`d through `main.lua` will run through the `main` function, permitting full safe access to all natives. Previously, you'd have to tip-toe around which WC3 systems were initialized at script-load time and which weren't. Now you can simply call those functions in the script body, without the need for hooks or any other tricks.
+* As a consequence, it is no longer possible to add/replace code in the `config` function through `main.lua`. If you still want to run code in the `config` section of the map script, create a `config.lua` file. The contents of this file will be executed in WC3's `config` section.
+* The same applies to init-time loading. If you want to run some code before either `config` or `main` execute, create a file called `init.lua`.
+* If you want to suppress the default behaviour of `main` or `config` (e.g. if you are doing all map initialization and player setup yourself), then `return true` in the respective files. Otherwise, your code will run before the default actions.
+* As a consequence, Ceres hooks `main::after`, `main::before`, `config::after`, and `config::before` no longer exist. Ceres will throw an error if you try to add a hook with either of those names.
+## New features
+* The default map script template now has preliminary support for live-reloading. Please note that this __is an unfinished feature__. However, the script will automatically detect if it has been run a second time, and fire the `reload::before` and `reload::after` hooks when it does so, as well as reloading all the modules within itself.
+* Ceres now loads individual modules as a string rather than as a function, which allows WC3 to correctly report errors as located inside the offending module, rather than simply reporting them as being inside `war3map.lua`.
+* Added a new function `fs.watchFile(path, callback)`, which will execute `callback` with a file's new contents when the said file changes. This can be used to communicate with WC3 by creating Preloader files from inside WC3 and loading a response file inside WC3. This will be used by live reload.
+* Modules can now be specified as optional, i.e. `require('mymodule', true)`. Ceres will simply ignore it if the module does not exist.
+
+## Bug fixes
+* Fixed a bug where certain unit fields were incorrectly parsed in the metadata, causing them to throw errors upon access attempts.
+* Fixed a bug in the Lua parser failing to parse `elseif` clauses sometimes.
+
 # 0.2.5
 
 * Fixed a bug with script-only compilation

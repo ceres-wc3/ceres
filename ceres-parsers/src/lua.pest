@@ -8,8 +8,8 @@ COMMENT = _{
 }
 
 keyword = _{
-    "and"   | "break" | "do"       | "else" | "elseif" | "end"    |
-    "false" | "for  " | "function" | "goto" | "if"     | "in"     |
+    "and"   | "break" | "do"       | "elseif" | "else" | "end"    |
+    "false" | "for  " | "function" | "goto"   | "if"   | "in"     |
     "local" | "nil"   | "not"      | "or"   | "repeat" | "return" |
     "then"  | "true"  | "until"    | "while"
 }
@@ -22,7 +22,7 @@ LongBracketEndPeek = _{ "]" ~ PEEK ~ "]" }
 SimpleCommentContent = { (!("\n") ~ ANY)* }
 StringContentLong = { (!(LongBracketEndPeek) ~ ANY)* }
 
-Ident = @{ 
+Ident = @{
     !(ASCII_DIGIT | WHITESPACE) ~ !(keyword ~ (!ASCII_ALPHA ~ ANY)) ~ (!(WHITESPACE) ~ (ASCII_ALPHA | "_" | ASCII_DIGIT))+
 }
 
