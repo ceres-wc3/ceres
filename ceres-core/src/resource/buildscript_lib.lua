@@ -1,5 +1,7 @@
 -- Build script utilities for Ceres
 
+ceres.compiletime = true
+
 function log(...)
     local args = { ... }
     for k, v in pairs(args) do
@@ -23,33 +25,48 @@ end
 
 ceres.registerMacro("macro_define", define)
 
+ceres.registerMacro("include", function(path)
+    local content, err = fs.readFile(path)
+
+    if not content then
+        log("Failed to run include macro: ", err)
+        error(err)
+    end
+
+    return content
+end)
+
 function macro_define() end
 function compiletime() end
 
 -- hooks
 
+local preScriptBuildHooks = {}
 local postScriptBuildHooks = {}
 local postMapBuildHooks = {}
 local postRunHooks = {}
 
-local function callHooks(t)
-    for k, v in ipairs(t) do
-        local _, error = pcall(v.callback)
-        if error ~= nil then
-            log("error in hook")
-            log(error)
+local function callHooks(t, ...)
+    for _, v in ipairs(t) do
+        local r = v.callback(...)
+        if r ~= nil then
+            return r
         end
     end
 end
 
 local function addHook(hookTable, hookName, callback)
-    for i, v in ipairs(hookTable) do
+    for _, v in ipairs(hookTable) do
         if v.name == hookName then
             v.callback = callback
             return
         end
     end
     table.insert(hookTable, {name = hookName, callback = callback})
+end
+
+function ceres.addPreScriptBuildHook(name, callback)
+    addHook(preScriptBuildHooks, name, callback)
 end
 
 function ceres.addPostScriptBuildHook(name, callback)
@@ -121,7 +138,7 @@ end
 -- Any files added to the map via map:addFileString() or map:addFileDisk() will be
 -- written at this stage
 function mapMeta:writeToMpq(path)
-    local creator = mpq.new()
+    local creator = mpq.create()
 
     if self.kind == "dir" then
         local success, errorMsg = creator:addFromDir(self.path)
@@ -190,7 +207,7 @@ function ceres.openMap(name)
     local map = {
         added = {}
     }
-    local mapPath = ceres.layout.mapsDirectory .. name
+    local mapPath = name
 
     if not fs.exists(mapPath) then
         return false, "map does not exist"
@@ -225,11 +242,9 @@ end
 
 -- Describes the folder layout used by Ceres.
 -- Can be changed on a per-project basis.
--- This layout will also be used by the VSCode extension.
 ceres.layout = {
     mapsDirectory = "maps/",
-    srcDirectory = "src/",
-    libDirectory = "lib/",
+    srcDirectories = {"src/", "lib/"},
     targetDirectory = "target/"
 }
 
@@ -259,7 +274,7 @@ function ceres.buildMap(buildCommand)
     log("    Output type: " .. buildCommand.output)
 
     if mapName ~= nil then
-        local loadedMap, errorMsg = ceres.openMap(mapName)
+        local loadedMap, errorMsg = ceres.openMap(ceres.layout.mapsDirectory .. mapName)
         if errorMsg ~= nil then
             log("ERR: Could not load map " .. mapName .. ": " .. errorMsg)
             return false
@@ -290,13 +305,12 @@ function ceres.buildMap(buildCommand)
 
     _G.currentMap = map
 
+    mapScript = callHooks(preScriptBuildHooks, map, mapScript) or mapScript
+
     local script, errorMsg = ceres.compileScript {
-        srcDirectory = ceres.layout.srcDirectory,
-        libDirectory = ceres.layout.libDirectory,
+        srcDirectories = ceres.layout.srcDirectories,
         mapScript = mapScript or ""
     }
-
-    callHooks(postScriptBuildHooks)
 
     if errorMsg ~= nil then
         log("ERR: Map build failed:")
@@ -304,37 +318,39 @@ function ceres.buildMap(buildCommand)
         return false
     end
 
+    script = callHooks(postScriptBuildHooks, map, script) or script
+
     if map ~= nil then
         map:addFileString("war3map.lua", script)
         map:commitObjects()
     end
 
-    callHooks(postMapBuildHooks)
+    callHooks(postMapBuildHooks, map)
 
     log("Successfuly built the map")
 
     local artifact = {}
 
-    local errorMsg
+    local result, errorMsg
     if outputType == "script" then
         log("Writing artifact [script] to " .. ceres.layout.targetDirectory .. "war3map.lua")
         artifact.type = "script"
         artifact.path = ceres.layout.targetDirectory .. "war3map.lua"
         artifact.content = script
-        _, errorMsg = fs.writeFile(ceres.layout.targetDirectory .. "war3map.lua", script)
+        result, errorMsg = fs.writeFile(ceres.layout.targetDirectory .. "war3map.lua", script)
     elseif outputType == "mpq" then
         artifact.type = "mpq"
         artifact.path = ceres.layout.targetDirectory .. mapName
         log("Writing artifact [mpq] to " .. artifact.path)
-        _, errorMsg = map:writeToMpq(artifact.path)
+        result, errorMsg = map:writeToMpq(artifact.path)
     elseif outputType == "dir" then
         artifact.type = "dir"
         artifact.path = ceres.layout.targetDirectory .. mapName .. ".dir/"
         log("Writing artifact [dir] to " .. artifact.path)
-        _, errorMsg = map:writeToDir(artifact.path)
+        result, errorMsg = map:writeToDir(artifact.path)
     end
 
-    if errorMsg ~= nil then
+    if errorMsg then
         log("ERR: Saving the artifact failed: " .. errorMsg)
         return false
     else
@@ -394,7 +410,9 @@ function ceres.defaultHandler()
     local outputType = arg.value("--output") or "mpq"
     local noKeepScript = arg.exists("--no-map-script") or false
 
-    package.path = package.path .. ";./" .. ceres.layout.srcDirectory .. "/?.lua;./" .. ceres.layout.libDirectory .. "/?.lua"
+    for _, v in pairs(ceres.layout.srcDirectories) do
+        package.path = package.path .. ";./" .. v .. "/?.lua"
+    end
 
     local artifact = ceres.buildMap {
         input = mapArg,
@@ -403,7 +421,7 @@ function ceres.defaultHandler()
     }
 
     if ceres.runMode() == "run" then
-        if artifact == nil or artifact.type == "script" then
+        if not artifact or artifact.type == "script" then
             log("WARN: Runmap was requested, but the current build did not produce a runnable artifact...")
         elseif ceres.runConfig == nil then
             log("WARN: Runmap was requested, but ceres.runConfig is nil!")

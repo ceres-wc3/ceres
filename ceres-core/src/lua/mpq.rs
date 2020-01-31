@@ -302,7 +302,7 @@ pub fn get_mpq_module(ctx: LuaContext) -> LuaTable {
     let table = ctx.create_table().unwrap();
 
     table.set("open", get_mpqopen_luafn(ctx)).unwrap();
-    table.set("new", get_mpqnew_luafn(ctx)).unwrap();
+    table.set("create", get_mpqnew_luafn(ctx)).unwrap();
 
     table
 }

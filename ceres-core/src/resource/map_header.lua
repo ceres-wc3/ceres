@@ -33,10 +33,10 @@ do
             error(("can't register non-existent Ceres hook '%s'"):format(hookName))
         end
 
-        table.insert(ceres.hooks[hookName], ceres.wrapCatch(callback))
+        table.insert(ceres.hooks[hookName], ceres.wrapSafeCall(callback))
     end
 
-    function ceres.catch(callback, ...)
+    function ceres.safeCall(callback, ...)
         local success, err = pcall(callback, ...)
 
         if not success then
@@ -46,9 +46,9 @@ do
         end
     end
 
-    function ceres.wrapCatch(callback)
+    function ceres.wrapSafeCall(callback)
         return function(...)
-            ceres.catch(callback, ...)
+            ceres.safeCall(callback, ...)
         end
     end
 
@@ -60,9 +60,9 @@ do
                 return module.cached
             else
                 module.initialized = true
-                local compiled, error = load(module.source, "module " .. name)
+                local compiled, err = load(module.source, "module " .. name)
                 if not compiled then
-                    error("failed to compile module " .. name .. ": " .. error)
+                    error("failed to compile module " .. name .. ": " .. err)
                 end
 
                 module.cached = compiled()
@@ -86,12 +86,12 @@ do
                 end
 
                 if ceres.modules["main"] then
-                    local result = ceres.catch(require, "main")
+                    local result = ceres.safeCall(require, "main")
                     if not result then
-                        ceres.catch(ceres.oldMain)
+                        ceres.safeCall(ceres.oldMain)
                     end
                 else
-                    ceres.catch(ceres.oldMain)
+                    ceres.safeCall(ceres.oldMain)
                 end
 
                 ceres.initialized = true
@@ -99,12 +99,12 @@ do
 
             function _G.config()
                 if ceres.modules["config"] then
-                    local result = ceres.catch(require, "config")
+                    local result = ceres.safeCall(require, "config")
                     if not result then
-                        ceres.catch(ceres.oldConfig)
+                        ceres.safeCall(ceres.oldConfig)
                     end
                 else
-                    ceres.catch(ceres.oldConfig)
+                    ceres.safeCall(ceres.oldConfig)
                 end
             end
 

@@ -24,25 +24,24 @@ pub trait ModuleProvider {
 }
 
 pub struct ProjectModuleProvider {
-    src_dir: PathBuf,
-    lib_dir: PathBuf,
+    directories: Vec<PathBuf>,
 
     known_modules: HashMap<String, PathBuf>,
 }
 
 impl ProjectModuleProvider {
-    pub fn new(src_dir: PathBuf, lib_dir: PathBuf) -> ProjectModuleProvider {
+    pub fn new(directories: &[PathBuf]) -> ProjectModuleProvider {
         ProjectModuleProvider {
-            src_dir,
-            lib_dir,
+            directories: directories.into(),
 
             known_modules: Default::default(),
         }
     }
 
     pub fn scan(&mut self) {
-        Self::scan_dir(&mut self.known_modules, &self.lib_dir);
-        Self::scan_dir(&mut self.known_modules, &self.src_dir);
+        for dir in &self.directories {
+            Self::scan_dir(&mut self.known_modules, &dir);
+        }
     }
 
     fn scan_dir<P: AsRef<Path>>(modules: &mut HashMap<String, PathBuf>, path: P) {

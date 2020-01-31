@@ -1,4 +1,4 @@
-**WARNING: The master branch currently hosts the 0.2.x version of Ceres which is largely untested and potentially unstable. Documentation is WIP and is incomplete. If you're looking for the old 0.1.x version, click [here](https://github.com/ElusiveMori/ceres-wc3/tree/v0.1.5)**
+**WARNING: The master branch currently hosts the 0.3.x version of Ceres which is largely untested and potentially unstable. Documentation is WIP and is incomplete. If you're looking for the old 0.1.x version, click [here](https://github.com/ElusiveMori/ceres-wc3/tree/v0.1.5)**
 
 # About
 
