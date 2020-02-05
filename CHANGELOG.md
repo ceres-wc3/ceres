@@ -1,3 +1,24 @@
+# 0.3.1
+
+## Breaking
+* `ceres.catch` and `ceres.wrapCatch` were renamed to `ceres.safeCall` and `ceres.wrapSafeCall` to avoid clashing with the `catch` operator in TS
+* Ceres no longer suppresses default `main` and `config` functions if their respective modules returned a non-false result. Instead, if you want to suppress default `main` and `config` behaviour, you can call `ceres.suppressDefaultMain()`, and `ceres.suppressDefaultConfig()`. This was a particular pain point for TS users with a `main.ts` module.
+* `mpq.new` was renamed to `mpq.create` to avoid clashing with the `new` operator in TS
+* Replaced `ceres.layout.srcDirectory` and `ceres.layout.libDirectory` with one array - `ceres.layout.srcDirectories`, allowing you to specify any number of source directories to instruct Ceres to look in. This is useful for TypeScript projects that can have a pure-Lua directory, a compiled TS directory, and external dependencies in `node_modules`.
+
+## Non-Breaking
+* When invoking `ceres run`, Ceres will now wait for WC3 to exit before shutting down. This is useful in VS Code on certain platforms, where previously a finished VS Code task running `ceres run` would make WC3 exit immediately.
+* Added a `fs.copyFile` function.
+* Added a `map:addDir` method to `map` objects, allowing you quickly import an entire directory into the map.
+* Pulled in upstream bugfixes from `ceres-mpq` related to path separator issues
+* Added a Ceres-specific unit field called `siid` to the Object API, which returns the unit's editor name, which is used by natives like `CreateUnitByName`
+
+## Documentation
+
+The documentation for Ceres has been updated. There are now template repositories for Lua and TypeScript, as well as a [TypeScript library](https://github.com/ceres-wc3/cerrie) which provides idiomatic wrappers over JASS natives and useful utilities such as File I/O and Live Reload.
+
+Check the readme for more information. 
+
 # 0.3.0
 
 __Significant breaking changes in this release!__
