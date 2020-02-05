@@ -47,6 +47,16 @@ fn lua_write_file(path: &str, content: LuaString) -> Result<(), AnyError> {
     Ok(())
 }
 
+fn lua_copy_file(from: &str, to: &str) -> Result<(), AnyError> {
+    let from = validate_path(&from)?;
+    let to = validate_path(to)?;
+
+    fs::create_dir_all(to.parent().ok_or(LuaFileError::InvalidPath)?)?;
+    fs::copy(from, to)?;
+
+    Ok(())
+}
+
 fn lua_read_file<'lua>(ctx: LuaContext<'lua>, path: &str) -> Result<LuaString<'lua>, AnyError> {
     let path = validate_path(&path)?;
 
@@ -128,7 +138,11 @@ fn lua_absolutize_path(path: &str) -> Result<String, AnyError> {
     Ok(path.absolutize()?.to_str().unwrap().into())
 }
 
-fn lua_watch_file<'lua>(ctx: LuaContext<'lua>, path: &str, callback: LuaFunction<'lua>) -> Result<(), AnyError> {
+fn lua_watch_file<'lua>(
+    ctx: LuaContext<'lua>,
+    path: &str,
+    callback: LuaFunction<'lua>,
+) -> Result<(), AnyError> {
     let (tx, rx) = mpsc::channel();
     let mut watcher = watcher(tx, Duration::from_millis(100))?;
 
@@ -137,14 +151,12 @@ fn lua_watch_file<'lua>(ctx: LuaContext<'lua>, path: &str, callback: LuaFunction
 
     loop {
         match rx.recv() {
-            Ok(event) => {
-                match event {
-                    DebouncedEvent::Write(path) | DebouncedEvent::Create(path) => {
-                        let data = fs::read(path)?;
-                        callback.call::<_, ()>(LuaValue::String(ctx.create_string(&data)?))?;
-                    },
-                    _ => {}
+            Ok(event) => match event {
+                DebouncedEvent::Write(path) | DebouncedEvent::Create(path) => {
+                    let data = fs::read(path)?;
+                    callback.call::<_, ()>(LuaValue::String(ctx.create_string(&data)?))?;
                 }
+                _ => {}
             },
             Err(err) => {
                 eprintln!("Error while watching file: {}", err);
@@ -159,6 +171,15 @@ fn lua_watch_file<'lua>(ctx: LuaContext<'lua>, path: &str, callback: LuaFunction
 fn get_writefile_luafn(ctx: LuaContext) -> LuaFunction {
     ctx.create_function(move |ctx, (path, content): (String, LuaString)| {
         let result = lua_write_file(&path, content).map(|_| true);
+
+        Ok(wrap_result(ctx, result))
+    })
+    .unwrap()
+}
+
+fn get_copyfile_luafn(ctx: LuaContext) -> LuaFunction {
+    ctx.create_function(move |ctx, (from, to): (String, String)| {
+        let result = lua_copy_file(&from, &to);
 
         Ok(wrap_result(ctx, result))
     })
@@ -241,6 +262,7 @@ pub fn get_fs_module(ctx: LuaContext) -> LuaTable {
     let table = ctx.create_table().unwrap();
 
     table.set("writeFile", get_writefile_luafn(ctx)).unwrap();
+    table.set("copyFile", get_copyfile_luafn(ctx)).unwrap();
     table.set("readFile", get_readfile_luafn(ctx)).unwrap();
     table.set("readDir", get_readdir_luafn(ctx)).unwrap();
     table.set("isDir", get_isdir_luafn(ctx)).unwrap();

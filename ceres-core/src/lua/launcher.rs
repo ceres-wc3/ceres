@@ -2,12 +2,14 @@ use std::path::PathBuf;
 use std::borrow::Cow;
 use std::process::Command;
 use std::fs;
+use std::thread;
 
 use rlua::prelude::*;
 use path_absolutize::Absolutize;
 
 use crate::lua::util::wrap_result;
 use crate::error::*;
+use crate::evloop::{get_event_loop_tx, Message};
 
 pub struct LaunchConfig {
     launch_command: String,
@@ -46,8 +48,23 @@ fn run_map(map_path: &str, config: LaunchConfig) -> Result<(), AnyError> {
         cmd.arg(arg);
     }
 
-    println!("Starting Warcraft III with command line:\n{:?}", cmd);
-    cmd.spawn().context("could not launch Warcraft III")?;
+    let tx = get_event_loop_tx();
+
+    thread::spawn(move || {
+        println!("Starting Warcraft III with command line:\n{:?}", cmd);
+        let child = cmd.spawn().context("could not launch Warcraft III");
+
+        match child {
+            Ok(mut child) => {
+                if let Err(error) = child.wait() {
+                    println!("Process terminated errorfully: {}", error)
+                }
+            }
+            Err(error) => println!("An error occured while starting WC3: {}", error),
+        }
+
+        tx.send(Message::ChildTerminated)
+    });
 
     Ok(())
 }

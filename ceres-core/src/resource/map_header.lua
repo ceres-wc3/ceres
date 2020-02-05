@@ -6,7 +6,7 @@ ceres.initialized = ceres.initialized or false
 
 do
     function _G.print(...)
-        local args = {...}
+        local args = { ... }
         local msgs = {}
 
         for k, v in pairs(args) do
@@ -73,6 +73,17 @@ do
         end
     end
 
+    local mainSuppressed = false
+    local configSuppressed = false
+
+    function ceres.suppressDefaultMain()
+        mainSuppressed = true
+    end
+
+    function ceres.suppressDefaultConfig()
+        configSuppressed = true
+    end
+
     function ceres.init()
         if not ceres.initialized then
             ceres.oldMain = main or function() end
@@ -86,8 +97,8 @@ do
                 end
 
                 if ceres.modules["main"] then
-                    local result = ceres.safeCall(require, "main")
-                    if not result then
+                    ceres.safeCall(require, "main")
+                    if not mainSuppressed then
                         ceres.safeCall(ceres.oldMain)
                     end
                 else
@@ -99,8 +110,8 @@ do
 
             function _G.config()
                 if ceres.modules["config"] then
-                    local result = ceres.safeCall(require, "config")
-                    if not result then
+                    ceres.safeCall(require, "config")
+                    if configSuppressed then
                         ceres.safeCall(ceres.oldConfig)
                     end
                 else

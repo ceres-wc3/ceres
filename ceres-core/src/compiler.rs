@@ -296,7 +296,7 @@ impl<'lua, MO: ModuleProvider, MA: MacroProvider> ScriptCompiler<'lua, MO, MA> {
 
     fn is_macro_id(&self, id: &str) -> bool {
         match id {
-            "include" | "compiletime" | "require" => true,
+            "compiletime" | "require" => true,
             id => self.macro_provider.is_macro_id(id),
         }
     }

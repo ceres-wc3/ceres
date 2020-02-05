@@ -24,7 +24,7 @@ thiserror = "1.0.9"
 anyhow = "1.0.26"
 
 # internal
-ceres-mpq = "0.1.6"
+ceres-mpq = "0.1.7"
 ceres-formats = {path = "../ceres-formats"}
 ceres-parsers = {path = "../ceres-parsers"}
 ceres-data = {path = "../ceres-data"}

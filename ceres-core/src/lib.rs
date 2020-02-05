@@ -6,6 +6,7 @@ extern crate ceres_data as w3data;
 pub(crate) mod lua;
 pub(crate) mod error;
 pub(crate) mod compiler;
+pub(crate) mod evloop;
 
 use std::fs;
 use std::path::PathBuf;
@@ -14,8 +15,8 @@ use std::rc::Rc;
 use rlua::prelude::*;
 
 use crate::error::AnyError;
-use crate::error::CompilerError;
 use crate::error::ContextError;
+use crate::evloop::wait_on_evloop;
 
 #[derive(Copy, Clone)]
 pub enum CeresRunMode {
@@ -63,6 +64,8 @@ where
     } else if let Err(err) = &result {
         println!("[ERROR] A Lua error occured in the build script:\n{}", err);
     }
+
+    wait_on_evloop();
 
     if result.is_err() {
         std::process::exit(1);

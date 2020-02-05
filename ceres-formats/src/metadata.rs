@@ -468,6 +468,20 @@ pub fn read_metadata_dir<P: AsRef<Path>>(path: P) -> MetadataStore {
         metadata.insert_basic_field(row, legend, ObjectKind::DOODAD);
     });
 
+    // string id field for unit names
+    metadata.add_field(FieldDesc {
+        id:           ObjectId::from_bytes(b"siid").unwrap(),
+        index:        0,
+        variant:      FieldVariant::Normal {
+            name: "name".to_string(),
+        },
+        value_ty:     ValueType::String,
+        value_ty_raw: "string".to_string(),
+        exclusive:    None,
+        kind:         ObjectKind::UNIT,
+        is_profile:   false,
+    });
+
     metadata
 }
 

@@ -1,46 +1,120 @@
-**WARNING: The master branch currently hosts the 0.3.x version of Ceres which is largely untested and potentially unstable. Documentation is WIP and is incomplete. If you're looking for the old 0.1.x version, click [here](https://github.com/ElusiveMori/ceres-wc3/tree/v0.1.5)**
-
 # About
 
-Ceres is a build toolchain for **Warcraft III Lua Maps**. Its primary goal is to allow **editing maps in the comfort of your code editor of choice**, while also using the opportunity to provide additional utilities to mappers that are currently not present in World Editor, or unlikely to ever be introduced into World Editor.
+Ceres is a stand-alone scriptable build toolchain for Warcraft III maps. It provides a way to quickly and easily build and package Warcraft III Lua maps, as well as various other utilities and tools.
 
-If you just want to get started with making a Warcraft III map using Lua, skip to [Setup](docs/setup.md).
+It is scriptable and customizable using Lua, and can be used to orchestrate whatever you want, including:
+- Building a single Lua map
+- Building multiple Lua maps
+- Editing your maps' Object Data using Lua
+- Managing imports
+- And so on
 
-To be more precise, Ceres in a **bundled Lua runtime** with facilities and libraries specific to Warcraft III map development. Most operations in Ceres actually run various Lua scripts, with extensions provided by Ceres itself, such as reading and writing of MPQ archives, filesystem access, a script compiler for WC3 maps, and so on.
+## Quick Start
 
-Ceres comes bundled with a default **build script** written in Lua which aims to provide a standard, configurable workflow for building a Warcraft III map. The build script is configurable and extensible, and if you wish you can just run an entirely unrelated Lua script using Ceres' built-in libraries. It's built to be useful as more than just a compiler.
+Ceres can be used with pure Lua, or with TypeScript using a [TypeScript to Lua transpiler](https://github.com/TypeScriptToLua/TypeScriptToLua). There are template repositories for both.
 
-Because everything is bundled together into one executable, you don't need to fuss around with external requirements, dependency managers, and anything else. Ceres is meant to be portable and easy to get running.
+### Pure Lua
 
-# Documentation
+If you just want to use Lua and nothing else, setup is very minimal. Clone [this repository](https://github.com/ceres-wc3/ceres-lua-template), follow the instructions in the readme, and customize it to your heart's content.
 
-Documentation is a bit sparse at the moment, however, I'm trying to fill the gaps as I go.
+### TypeScript
 
-[Manual](docs/manual.md)  
-[Compiletime APIs](docs/compiletime.md)  
-[Setup Guide](docs/setup.md)  
+If you want to use TypeScript in your maps, Ceres can be used with it too. Setup is a bit more complex than with pure Lua, but you can use [this repository](https://github.com/ceres-wc3/ceres-ts-template) as a template. Make sure to read the readme.
 
-# Current Status
+There is also an example of using NPM to download external dependencies in your project, namely [Cerrie](https://github.com/ceres-wc3/cerrie), which is a library providing an idiomatic set of APIs for TypeScript projects, as well as some utilities such as File I/O and Live Reload. If you want to get started with Cerrie, take a look at [this branch of `ceres-ts-template`](https://github.com/ceres-wc3/ceres-ts-template/tree/cerrie). 
 
-At the moment, Ceres is able to compile multiple Lua files into a single Lua script for distribution in Warcraft III maps, and has a framework around the compiler to facilitate the map build process. It can read and write MPQ archives for final distribution of a map.
+## API & Docs
 
-The compiler is currently able to:
-* Resolve module dependencies and compile it all down into a single Lua file
-* Process custom macros and evaluate Lua code during the build of a map
+Ceres provides various APIs to enable it to do what it does, to both maps and build scripts. Namely, it has APIs for object editing, MPQ reading/writing, file I/O, Lua script compilation, file preprocessing and so on. The entire API surface has been documented in the form of a [TypeScript declaration file](https://github.com/ceres-wc3/ceres-decl), which you can use as a reference even when not using TypeScript - all APIs are themselves pure Lua and do not require TypeScript.
 
-The second point allows you to run arbitrary Lua code while the map is compiling. Right now this feature isn't terribly useful, however in the future it will allow to edit the map being compiled to add custom units, spells, set map description, etc. from within Lua scripts.
+Parts of Ceres are also documented more in-depth in the Wiki, which you can check out for extra information.
 
-# Roadmap
+## Build Process
 
-- [x] Script compiler
-- [x] Macro system
-- [x] Lua-based build system
-- [x] MPQ read/write API
-- [x] APIs to edit map data (objects, description, title, imports, etc.)
-- [ ] Standard WC3 Lua library 
-- [ ] Dependency manager (likely via git)
-- [ ] Beginner tutorial
-- [ ] Documentation of APIs provided by Ceres and advanced usage
-- [ ] VSCode integration via an extension
-- [ ] New project template
-- [ ] Auto-updates within Ceres (or via the VSCode extension)
+Ceres works by running a Lua script to build your map, called a *build script*. There is a default configuration that takes a map from a configurable folder and augments it with. If there is a `build.lua` file in the root of your project, it will also run that before building the map, allowing you to configure the build process, or override it entirely.
+
+Lua code is analyzed by looking at `require` calls to bundle all required modules into one Lua file - since Warcraft III doesn't support multiple Lua files yet.
+
+Code can also be executed during the build process by means of the `compiletime` macro. 
+
+For example:
+
+```lua
+--[[ inside build.lua ]]
+
+-- let's setup some data
+function getSomeData()
+    return {1,2,3,4,5}
+end
+
+--[[ inside main.lua ]]
+local a = compiletime(function()
+    print("This will be printed during the build process!")
+    
+    -- all compiletime macros execute in the same Lua context as other macros
+    -- and `build.lua`, meaning you can share data and functions between them
+   
+    local data = getSomeData()
+    return data
+end)
+
+-- compiletime will embed its return value into the compiled code,
+-- allowing you to retain information from the build stage
+-- will print '5'
+print(a[5])
+```
+
+## Macros
+
+Ceres preprocesses your Lua files before including them in the final script, allowing you to execute built-in and custom macros. The `compiletime()` macro has been mentioned before - it simply executes some code (or calculates a provided expression) and embeds the result as a Lua value in the resulting script. There is also `include`, which simply embeds a file into the source code with no preprocessing.
+
+You can also register custom macros using `macro_define`. As a rather complex example:
+```lua
+compiletime(function()
+    -- this strips out all newlines and extra whitespace from the macro
+    function prepare_macro_template(s)
+        return s:gsub("\n", ""):gsub("[ ]+", " "):gsub("^[ ]+", ""):gsub("[ ]+$", "")
+    end
+
+    -- create a template for our macro
+    -- this code will be injected into the final script
+    ASSERT_ARG_TEMPLATE = prepare_macro_template([[
+        do
+        local t = typeId(%s)
+        if t ~= "%s" then
+            print(t)
+            error("argument #%s ('%s') must be a '%s', but got a " .. t .. " instead")
+        end
+        end
+    ]])
+   
+    -- define a global function at compiletime which takes in the macro arguments and returns a string which will be embeded in the code
+    function MAKE_ASSERT_ARG_TYPE(num, arg, requiredType)
+        -- asserts can be disabled by setting the ASSERTS_DISABLED variable during the build process
+        -- if they are disabled, nothing will be embedded in the code
+        if not ASSERTS_DISABLED then
+            -- if the asserts aren't disabled, return the formatted macro template according to our args
+            return string.format(ASSERT_ARG_TEMPLATE, arg, requiredType, num, arg, requiredType)
+        else
+            return ""
+        end
+    end
+end)
+
+-- macro_define is itself a macro - it registers a custom macro handler
+-- which will be invoked when the macro is encountered by the preprocessor
+-- the first argument is the macro name
+-- the second argument is the macro handler. you can provide a closure here,
+-- but in our case we provide MAKE_ASSERT_ARG_TYPE, which we have defined previously
+macro_define("ASSERT_ARG_TYPE", MAKE_ASSERT_ARG_TYPE)
+
+-- example usage
+-- asserts that a and b are numbers, otherwise throws an error
+-- allows disabling asserts by enabling ASSERTS_DISABLED
+function add(a, b)
+    ASSERT_ARG_TYPE(1, "a", "number")
+    ASSERT_ARG_TYPE(2, "b", "number")
+    
+    return a + b
+end
+```

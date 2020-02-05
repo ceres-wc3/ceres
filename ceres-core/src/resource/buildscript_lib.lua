@@ -95,6 +95,10 @@ function mapMeta:readFile(path)
     end
 end
 
+function mapMeta:addDir(path)
+    table.insert(self.addedDirs, path)
+end
+
 -- Adds a file to the map, as a lua string
 -- This doesn't modify the map in any way, it only adds the file to be written when either
 -- map:writeToDir() or map:writeToMpq() is called
@@ -125,11 +129,15 @@ function mapMeta:writeToDir(path)
         self.archive:extractTo(path)
     end
 
+    for _, v in ipairs(self.addedDirs) do
+        fs.copyDir(v, path)
+    end
+
     for k, v in pairs(self.added) do
         if v.kind == "string" then
-            fs.writeFile(path .. k, v.contents)
+            fs.writeFile(path .. k:gsub("%\\", "/"), v.contents)
         elseif v.kind == "file" then
-            fs.copyFile(v.filePath, path .. k)
+            fs.copyFile(v.filePath, path .. k:gsub("%\\", "/"))
         end
     end
 end
@@ -150,6 +158,10 @@ function mapMeta:writeToMpq(path)
         if not success then
             log("Couldn't add files from another archive: " .. errorMsg)
         end
+    end
+
+    for _, v in ipairs(self.addedDirs) do
+        creator:addFromDir(v)
     end
 
     for k, v in pairs(self.added) do
@@ -205,7 +217,8 @@ end
 
 function ceres.openMap(name)
     local map = {
-        added = {}
+        added = {},
+        addedDirs = {}
     }
     local mapPath = name
 
