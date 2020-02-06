@@ -9,7 +9,7 @@ It is scriptable and customizable using Lua, and can be used to orchestrate what
 - Managing imports
 - And so on
 
-There is also a community Discord where you can contact me for help, suggestions, or just to hang out. [discord.gg/M4KXP9a](Link.)
+There is also a community Discord where you can contact me for help, suggestions, or just to hang out. [Link.](https://discord.gg/M4KXP9a)
 
 ## Quick Start
 
