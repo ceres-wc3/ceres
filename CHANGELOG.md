@@ -1,10 +1,15 @@
+# 0.3.2
+
+* Fixed a small bug where Ceres would not quit after building, even when no Live Reload was enabled.
+* Removed all unstable feature gates and dependencies. Ceres now compiles on stable Rust.
+
 # 0.3.1
 
 ## Breaking
 * `ceres.catch` and `ceres.wrapCatch` were renamed to `ceres.safeCall` and `ceres.wrapSafeCall` to avoid clashing with the `catch` operator in TS
 * Ceres no longer suppresses default `main` and `config` functions if their respective modules returned a non-false result. Instead, if you want to suppress default `main` and `config` behaviour, you can call `ceres.suppressDefaultMain()`, and `ceres.suppressDefaultConfig()`. This was a particular pain point for TS users with a `main.ts` module.
 * `mpq.new` was renamed to `mpq.create` to avoid clashing with the `new` operator in TS
-* Replaced `ceres.layout.srcDirectory` and `ceres.layout.libDirectory` with one array - `ceres.layout.srcDirectories`, allowing you to specify any number of source directories to instruct Ceres to look in. This is useful for TypeScript projects that can have a pure-Lua directory, a compiled TS directory, and external dependencies in `node_modules`.
+* Replaced `ceres.layout.srcDirectory` and `ceres.layout.libDireclctory` with one array - `ceres.layout.srcDirectories`, allowing you to specify any number of source directories to instruct Ceres to look in. This is useful for TypeScript projects that can have a pure-Lua directory, a compiled TS directory, and external dependencies in `node_modules`.
 
 ## Non-Breaking
 * When invoking `ceres run`, Ceres will now wait for WC3 to exit before shutting down. This is useful in VS Code on certain platforms, where previously a finished VS Code task running `ceres run` would make WC3 exit immediately.

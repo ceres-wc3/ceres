@@ -9,7 +9,7 @@ edition = "2018"
 lazy_static = "1.4.0"
 atoi = "0.3.2"
 indexmap = "1.3.0"
-slotmap = { version = "0.4.0", features = ["unstable", "serde"] }
+slotmap = { version = "0.4.0", features = ["serde"] }
 num-traits = "0.2.10"
 bitflags = "1.2.1"
 

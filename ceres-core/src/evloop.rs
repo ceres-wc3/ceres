@@ -8,13 +8,13 @@ pub enum Message {
 
 struct Context {
     rx: Option<Receiver<Message>>,
-    tx: Sender<Message>,
+    tx: Option<Sender<Message>>,
 }
 
 impl Default for Context {
     fn default() -> Context {
         let (tx, rx) = channel();
-        Context { tx, rx: Some(rx) }
+        Context { tx: Some(tx), rx: Some(rx) }
     }
 }
 
@@ -25,7 +25,7 @@ thread_local! {
 pub fn get_event_loop_tx() -> Sender<Message> {
     CONTEXT.with(|ctx| {
         let ctx = ctx.borrow();
-        ctx.tx.clone()
+        ctx.tx.as_ref().unwrap().clone()
     })
 }
 
@@ -36,6 +36,9 @@ pub fn wait_on_evloop() {
             .rx
             .take()
             .expect("evloop recv must be available");
+        // no more tx for you!
+        let tx = borrowed_ctx.tx.take();
+        drop(tx);
         drop(borrowed_ctx);
 
         while let Ok(message) = rx.recv() {
@@ -43,8 +46,5 @@ pub fn wait_on_evloop() {
                 break;
             }
         }
-
-        let mut borrowed_ctx = ctx.borrow_mut();
-        borrowed_ctx.rx.replace(rx);
     })
 }

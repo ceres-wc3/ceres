@@ -4,8 +4,7 @@ use std::collections::BTreeMap;
 use std::collections::HashMap;
 
 use serde::{Serialize, Deserialize};
-use slotmap::new_key_type;
-use slotmap::SlotMap;
+use slotmap::{new_key_type, DenseSlotMap};
 
 use crate::parser::slk;
 use crate::parser::slk::read_row_num;
@@ -129,7 +128,7 @@ fn data_char_to_id(input: u8) -> u8 {
 pub struct MetadataStore {
     // primary store for the fields
     // other collections in this struct hold references to FieldKeys returned by this
-    fields:            SlotMap<FieldKey, FieldDesc>,
+    fields:            DenseSlotMap<FieldKey, FieldDesc>,
     // for fields that are only present on certain objects (namely, ability Data fields),
     // this holds the association between objects and fields that are available only on them
     objects_with_data: HashMap<ObjectId, Vec<ObjectId>>,
