@@ -1,15 +1,15 @@
-use std::path::PathBuf;
 use std::borrow::Cow;
-use std::process::Command;
 use std::fs;
+use std::path::PathBuf;
+use std::process::Command;
 use std::thread;
 
-use rlua::prelude::*;
 use path_absolutize::Absolutize;
+use rlua::prelude::*;
 
-use crate::lua::util::wrap_result;
 use crate::error::*;
 use crate::evloop::{get_event_loop_tx, Message};
+use crate::lua::util::wrap_result;
 
 pub struct LaunchConfig {
     launch_command: String,
@@ -17,7 +17,7 @@ pub struct LaunchConfig {
     extra_args:     Vec<String>,
 }
 
-fn run_map(map_path: &str, config: LaunchConfig) -> Result<(), AnyError> {
+fn run_map(map_path: &str, config: LaunchConfig) -> Result<(), anyhow::Error> {
     let map_path: PathBuf = map_path.into();
     let map_path = map_path.absolutize()?;
     let map_path = map_path
@@ -69,7 +69,7 @@ fn run_map(map_path: &str, config: LaunchConfig) -> Result<(), AnyError> {
     Ok(())
 }
 
-fn lua_run_map(path: LuaString, config: LuaTable) -> Result<bool, AnyError> {
+fn lua_run_map(path: LuaString, config: LuaTable) -> Result<bool, anyhow::Error> {
     let map_path = path.to_str()?;
 
     let launch_command: String = config

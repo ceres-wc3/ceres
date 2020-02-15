@@ -1,17 +1,15 @@
+use std::error::Error;
 use std::path::Path;
 use std::path::PathBuf;
-use std::error::Error;
 
-use err_derive::Error;
 use pest::error::Error as PestError;
 use rlua::prelude::LuaError;
+use thiserror::Error;
 
 use ceres_parsers::lua;
 
-pub type AnyError = Box<dyn Error + 'static>;
-
 #[derive(Error, Debug)]
-#[error(display = "{}", message)]
+#[error("{}", message)]
 pub struct StringError {
     message: String,
 }
@@ -31,7 +29,7 @@ impl From<StringError> for LuaError {
 }
 
 #[derive(Error, Debug)]
-#[error(display = "{}: {}", context, cause)]
+#[error("{}: {}", context, cause)]
 pub struct ContextError<E: Error> {
     context: String,
     cause:   E,
@@ -46,14 +44,14 @@ impl<E: Error> ContextError<E> {
     }
 }
 
-impl<E: Error + 'static> From<ContextError<E>> for LuaError {
+impl<E: Error + Send + Sync + 'static> From<ContextError<E>> for LuaError {
     fn from(other: ContextError<E>) -> LuaError {
         LuaError::external(other)
     }
 }
 
 #[derive(Error, Debug)]
-#[error(display = "IO Error [{:?}]: {}", path, cause)]
+#[error("IO Error [{:?}]: {}", path, cause)]
 pub struct IoError {
     path:  PathBuf,
     cause: std::io::Error,
@@ -69,7 +67,7 @@ impl IoError {
 }
 
 #[derive(Error, Debug)]
-#[error(display = "Could not compile file {:?}\nCause: {}", path, cause)]
+#[error("Could not compile file {:?}\nCause: {}", path, cause)]
 pub struct FileCompilationError {
     path:  PathBuf,
     cause: CompilerError,
@@ -83,12 +81,12 @@ impl FileCompilationError {
 
 #[derive(Error, Debug)]
 pub enum CompilerError {
-    #[error(display = "Module not found: {}", module_name)]
+    #[error("Module not found: {}", module_name)]
     ModuleNotFound { module_name: String },
-    #[error(display = "Could not parse file:\n{}", error)]
+    #[error("Could not parse file:\n{}", error)]
     ParserFailed { error: PestError<lua::Rule> },
     #[error(
-        display = "Could not compile module [{}] ({:?}):\n{}",
+        "Could not compile module [{}] ({:?}):\n{}",
         module_name,
         module_path,
         error
@@ -98,9 +96,9 @@ pub enum CompilerError {
         module_path: PathBuf,
         error:       Box<CompilerError>,
     },
-    #[error(display = "Cyclical dependency found involving module {}", module_name)]
+    #[error("Cyclical dependency found involving module {}", module_name)]
     CyclicalDependency { module_name: String },
-    #[error(display = "Macro invocation failed: {}\n{}", error, diagnostic)]
+    #[error("Macro invocation failed: {}\n{}", error, diagnostic)]
     MacroError {
         error:      Box<MacroInvocationError>,
         diagnostic: PestError<lua::Rule>,
@@ -115,11 +113,11 @@ impl From<PestError<lua::Rule>> for CompilerError {
 
 #[derive(Error, Debug)]
 pub enum MacroInvocationError {
-    #[error(display = "Lua error while invoking macro: {}", error)]
+    #[error("Lua error while invoking macro: {}", error)]
     LuaError { error: LuaError },
-    #[error(display = "Error while invoking macro: {}", message)]
+    #[error("Error while invoking macro: {}", message)]
     MessageError { message: String },
-    #[error(display = "Compiler error while invoking macro: {}", error)]
+    #[error("Compiler error while invoking macro: {}", error)]
     CompilerError { error: CompilerError },
 }
 

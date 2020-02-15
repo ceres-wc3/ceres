@@ -106,15 +106,15 @@ pub mod read {
 }
 
 pub mod write {
-    use std::io::{Error as IoError, Write};
     use std::cell::Ref;
+    use std::io::{Error as IoError, Write};
 
     use byteorder::{BE, LE, WriteBytesExt};
 
     use crate::{ObjectId, ObjectKind};
+    use crate::metadata::MetadataStore;
     use crate::object::{FieldKind, Object, Value};
     use crate::objectstore::ObjectStore;
-    use crate::metadata::{MetadataStore, FieldDesc, FieldVariant};
 
     const W3OBJ_FORMAT_VERSION: u32 = 1;
 

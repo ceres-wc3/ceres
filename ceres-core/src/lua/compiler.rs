@@ -5,7 +5,6 @@ use rlua::prelude::*;
 use crate::compiler;
 use crate::lua::macros;
 use crate::lua::util::wrap_result;
-use crate::error::AnyError;
 
 pub fn get_compile_script_luafn(ctx: LuaContext) -> LuaFunction {
     ctx.create_function(|ctx, args: LuaTable| {
@@ -16,7 +15,7 @@ pub fn get_compile_script_luafn(ctx: LuaContext) -> LuaFunction {
     .unwrap()
 }
 
-fn compile_script(ctx: LuaContext, args: LuaTable) -> Result<String, AnyError> {
+fn compile_script(ctx: LuaContext, args: LuaTable) -> Result<String, anyhow::Error> {
     let src_directories: Vec<LuaString> = args.get("srcDirectories")?;
     let map_script: LuaString = args.get("mapScript")?;
 

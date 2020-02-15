@@ -95,8 +95,22 @@ function mapMeta:readFile(path)
     end
 end
 
+local addDirRecursive
+local function addDirRecursive(self, path, basePath)
+    local files, dirs = fs.readDir(path)
+
+    for _, file in pairs(files) do
+        local relativePath = file:sub(#basePath + 2)
+        self:addFileDisk(relativePath, file)
+    end
+
+    for _, dir in pairs(dirs) do
+        addDirRecursive(self, dir, basePath)
+    end
+end
+
 function mapMeta:addDir(path)
-    table.insert(self.addedDirs, path)
+    addDirRecursive(self, path, fs.absolutize(path))
 end
 
 -- Adds a file to the map, as a lua string
@@ -419,8 +433,8 @@ function ceres.defaultHandler()
         return
     end
 
-    local mapArg = arg.value("--map")
-    local outputType = arg.value("--output") or "mpq"
+    local mapArg = arg.value("--map") or arg.value("-m")
+    local outputType = arg.value("--output") or arg.value("-o") or "mpq"
     local noKeepScript = arg.exists("--no-map-script") or false
 
     for _, v in pairs(ceres.layout.srcDirectories) do

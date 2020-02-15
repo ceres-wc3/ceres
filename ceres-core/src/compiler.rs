@@ -1,21 +1,21 @@
-use std::path::{PathBuf, Path};
-use std::path::Component;
 use std::collections::HashMap;
 use std::collections::HashSet;
 use std::fs;
+use std::path::{Path, PathBuf};
+use std::path::Component;
 
+use indexmap::IndexMap;
+use itertools::Itertools;
 use pest::iterators::Pair;
 use pest::Parser;
 use rlua::prelude::*;
-use indexmap::IndexMap;
 use walkdir::WalkDir;
-use itertools::Itertools;
 
 use ceres_parsers::lua;
 
+use crate::error::*;
 use crate::lua::util::evaluate_macro_args;
 use crate::lua::util::lvalue_to_str;
-use crate::error::*;
 
 pub trait ModuleProvider {
     fn module_src(&self, module_name: &str) -> Option<String>;

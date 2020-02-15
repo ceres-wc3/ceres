@@ -1,25 +1,25 @@
-use std::path::PathBuf;
 use std::fs;
-use std::sync::mpsc;
+use std::path::PathBuf;
+use std::sync::{Arc, mpsc};
 use std::time::Duration;
 
-use notify::{Watcher, RecursiveMode, DebouncedEvent, watcher};
-use rlua::prelude::*;
-use err_derive::Error;
+use notify::{DebouncedEvent, RecursiveMode, Watcher, watcher};
 use path_absolutize::Absolutize;
+use rlua::prelude::*;
+use thiserror::Error;
 use walkdir::WalkDir;
 
-use crate::error::AnyError;
 use crate::error::IoError;
+use crate::evloop::{get_event_loop_tx, Message};
 use crate::lua::util::wrap_result;
 
 #[derive(Error, Debug)]
 pub enum LuaFileError {
-    #[error(display = "Path validation attempt failed: {}", cause)]
+    #[error("Path validation attempt failed: {}", cause)]
     PathCanonizationFailed { cause: IoError },
-    #[error(display = "Invalid path")]
+    #[error("Invalid path")]
     InvalidPath,
-    #[error(display = "Not a directory")]
+    #[error("Not a directory")]
     NotADir,
 }
 
@@ -38,7 +38,7 @@ fn validate_path(path: &str) -> Result<PathBuf, LuaFileError> {
         })
 }
 
-fn lua_write_file(path: &str, content: LuaString) -> Result<(), AnyError> {
+fn lua_write_file(path: &str, content: LuaString) -> Result<(), anyhow::Error> {
     let path = validate_path(&path)?;
 
     fs::create_dir_all(path.parent().ok_or(LuaFileError::InvalidPath)?)?;
@@ -47,7 +47,7 @@ fn lua_write_file(path: &str, content: LuaString) -> Result<(), AnyError> {
     Ok(())
 }
 
-fn lua_copy_file(from: &str, to: &str) -> Result<(), AnyError> {
+fn lua_copy_file(from: &str, to: &str) -> Result<(), anyhow::Error> {
     let from = validate_path(&from)?;
     let to = validate_path(to)?;
 
@@ -57,7 +57,7 @@ fn lua_copy_file(from: &str, to: &str) -> Result<(), AnyError> {
     Ok(())
 }
 
-fn lua_read_file<'lua>(ctx: LuaContext<'lua>, path: &str) -> Result<LuaString<'lua>, AnyError> {
+fn lua_read_file<'lua>(ctx: LuaContext<'lua>, path: &str) -> Result<LuaString<'lua>, anyhow::Error> {
     let path = validate_path(&path)?;
 
     let content = fs::read(path)?;
@@ -68,11 +68,11 @@ fn lua_read_file<'lua>(ctx: LuaContext<'lua>, path: &str) -> Result<LuaString<'l
 fn lua_read_dir<'lua>(
     ctx: LuaContext<'lua>,
     path: &str,
-) -> Result<(LuaTable<'lua>, LuaTable<'lua>), AnyError> {
+) -> Result<(LuaTable<'lua>, LuaTable<'lua>), anyhow::Error> {
     let path = validate_path(&path)?;
 
     if !path.is_dir() {
-        return Err(Box::new(LuaFileError::NotADir));
+        return Err(LuaFileError::NotADir.into());
     }
 
     let entries: Vec<_> = fs::read_dir(path)?.collect();
@@ -97,7 +97,7 @@ fn lua_read_dir<'lua>(
     ))
 }
 
-fn lua_copy_dir(from: &str, to: &str) -> Result<bool, AnyError> {
+fn lua_copy_dir(from: &str, to: &str) -> Result<bool, anyhow::Error> {
     let from: PathBuf = from.into();
     let to: PathBuf = to.into();
 
@@ -131,7 +131,7 @@ fn lua_copy_dir(from: &str, to: &str) -> Result<bool, AnyError> {
     Ok(true)
 }
 
-fn lua_absolutize_path(path: &str) -> Result<String, AnyError> {
+fn lua_absolutize_path(path: &str) -> Result<String, anyhow::Error> {
     let path: PathBuf = path.into();
 
     // TODO: Handle invalid UTF-8
@@ -142,30 +142,47 @@ fn lua_watch_file<'lua>(
     ctx: LuaContext<'lua>,
     path: &str,
     callback: LuaFunction<'lua>,
-) -> Result<(), AnyError> {
+) -> Result<bool, anyhow::Error> {
+    let callback_registry_key = Arc::new(ctx.create_registry_value(callback)?);
+    let path = path.to_string();
     let (tx, rx) = mpsc::channel();
     let mut watcher = watcher(tx, Duration::from_millis(100))?;
+    fs::write(&path, "")?;
 
-    fs::write(path, "")?;
-    watcher.watch(path, RecursiveMode::NonRecursive)?;
+    std::thread::spawn(move || {
+        watcher
+            .watch(&path, RecursiveMode::NonRecursive)
+            .expect("couldn't start file watcher");
+        let evloop_tx = get_event_loop_tx();
 
-    loop {
-        match rx.recv() {
-            Ok(event) => match event {
-                DebouncedEvent::Write(path) | DebouncedEvent::Create(path) => {
-                    let data = fs::read(path)?;
-                    callback.call::<_, ()>(LuaValue::String(ctx.create_string(&data)?))?;
+        loop {
+            match rx.recv() {
+                Ok(event) => match event {
+                    DebouncedEvent::Write(path) | DebouncedEvent::Create(path) => {
+                        let callback_registry_key = Arc::clone(&callback_registry_key);
+                        evloop_tx
+                            .send(Message::LuaRun(Box::new(move |ctx| {
+                                let data = fs::read(&path).expect("couldn't read changed file");
+                                let callback: LuaFunction =
+                                    ctx.registry_value(&callback_registry_key)?;
+                                callback
+                                    .call::<_, ()>(LuaValue::String(ctx.create_string(&data)?))?;
+
+                                Ok(())
+                            })))
+                            .expect("couldn't send file watch event to evloop");
+                    }
+                    _ => {}
+                },
+                Err(err) => {
+                    eprintln!("Error while watching file: {}", err);
+                    break;
                 }
-                _ => {}
-            },
-            Err(err) => {
-                eprintln!("Error while watching file: {}", err);
-                break;
             }
         }
-    }
+    });
 
-    Ok(())
+    Ok(true)
 }
 
 fn get_writefile_luafn(ctx: LuaContext) -> LuaFunction {

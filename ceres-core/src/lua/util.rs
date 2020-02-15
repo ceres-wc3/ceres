@@ -1,10 +1,10 @@
-use rlua::prelude::*;
 use pest::iterators::Pair;
+use rlua::prelude::*;
 
-use ceres_parsers::lua;
 use ceres_formats::{ObjectId, ValueType};
-use ceres_formats::object::Value;
 use ceres_formats::metadata::FieldDesc;
+use ceres_formats::object::Value;
+use ceres_parsers::lua;
 
 use crate::error::*;
 
@@ -89,7 +89,7 @@ pub fn ltable_to_str(table: LuaTable) -> String {
     out
 }
 
-pub fn wrap_result<'lua, V>(ctx: LuaContext<'lua>, value: Result<V, AnyError>) -> LuaMultiValue
+pub fn wrap_result<'lua, V>(ctx: LuaContext<'lua>, value: Result<V, anyhow::Error>) -> LuaMultiValue
 where
     V: ToLuaMulti<'lua>,
 {

@@ -2,8 +2,6 @@ use std::error::Error;
 
 use clap::clap_app;
 
-type AnyError = Box<dyn Error + 'static>;
-
 fn main() {
     dotenv::dotenv().ok();
 
@@ -51,7 +49,7 @@ fn main() {
     });
 }
 
-fn run_build(arg: &clap::ArgMatches, mode: ceres_core::CeresRunMode) -> Result<(), AnyError> {
+fn run_build(arg: &clap::ArgMatches, mode: ceres_core::CeresRunMode) -> Result<(), anyhow::Error> {
     let project_dir = arg
         .value_of("dir")
         .map(std::path::PathBuf::from)
@@ -71,7 +69,7 @@ fn run_build(arg: &clap::ArgMatches, mode: ceres_core::CeresRunMode) -> Result<(
     Ok(())
 }
 
-fn exec(arg: &clap::ArgMatches) -> Result<(), AnyError> {
+fn exec(arg: &clap::ArgMatches) -> Result<(), anyhow::Error> {
     let script = arg
         .value_of("script")
         .map(std::path::PathBuf::from)
@@ -88,7 +86,7 @@ fn exec(arg: &clap::ArgMatches) -> Result<(), AnyError> {
     Ok(())
 }
 
-fn run(matches: clap::ArgMatches) -> Result<(), AnyError> {
+fn run(matches: clap::ArgMatches) -> Result<(), anyhow::Error> {
     if let Some(arg) = matches.subcommand_matches("build") {
         run_build(arg, ceres_core::CeresRunMode::Build)?;
     } else if let Some(arg) = matches.subcommand_matches("run") {

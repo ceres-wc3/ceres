@@ -2,15 +2,14 @@ use std::fs;
 use std::io::{BufReader, BufWriter};
 use std::path::PathBuf;
 
-use rlua::prelude::*;
 use mpq::Archive;
 use mpq::Creator;
 use mpq::FileOptions;
+use rlua::prelude::*;
 use walkdir::WalkDir;
 
-use crate::error::AnyError;
-use crate::error::StringError;
 use crate::error::ContextError;
+use crate::error::StringError;
 use crate::lua::util::wrap_result;
 
 type FileArchive = Archive<BufReader<fs::File>>;
@@ -121,12 +120,12 @@ fn fileoptions_from_table(table: Option<LuaTable>) -> FileOptions {
     }
 }
 
-fn readflow_readfile(archive: &mut FileArchive, path: LuaString) -> Result<Vec<u8>, AnyError> {
+fn readflow_readfile(archive: &mut FileArchive, path: LuaString) -> Result<Vec<u8>, anyhow::Error> {
     let path = path.to_str()?;
     Ok(archive.read_file(path)?)
 }
 
-fn readflow_extract(archive: &mut FileArchive, path: LuaString) -> Result<bool, AnyError> {
+fn readflow_extract(archive: &mut FileArchive, path: LuaString) -> Result<bool, anyhow::Error> {
     let path: PathBuf = path.to_str()?.into();
     fs::create_dir_all(path.parent().unwrap())
         .map_err(|cause| ContextError::new("could not create folder for map", cause))?;
@@ -161,7 +160,7 @@ fn readflow_extract(archive: &mut FileArchive, path: LuaString) -> Result<bool, 
     Ok(true)
 }
 
-fn readflow_open(path: &str) -> Result<Viewer, AnyError> {
+fn readflow_open(path: &str) -> Result<Viewer, anyhow::Error> {
     let file = fs::OpenOptions::new().read(true).open(path)?;
 
     let file = BufReader::new(file);
@@ -175,7 +174,7 @@ fn writeflow_addbuf(
     path: LuaString,
     contents: LuaString,
     options: FileOptions,
-) -> Result<bool, AnyError> {
+) -> Result<bool, anyhow::Error> {
     let path = path.to_str()?;
     let contents = contents.as_bytes();
 
@@ -189,7 +188,7 @@ fn writeflow_addfile(
     archive_path: LuaString,
     fs_path: LuaString,
     options: FileOptions,
-) -> Result<bool, AnyError> {
+) -> Result<bool, anyhow::Error> {
     let archive_path = archive_path.to_str()?;
     let fs_path = fs_path.to_str()?;
     let contents = fs::read(fs_path)?;
@@ -202,7 +201,7 @@ fn writeflow_adddir(
     builder: &mut Builder,
     dir_path: LuaString,
     options: FileOptions,
-) -> Result<bool, AnyError> {
+) -> Result<bool, anyhow::Error> {
     let dir_path: PathBuf = dir_path.to_str()?.into();
 
     let entries = WalkDir::new(&dir_path)
@@ -236,7 +235,7 @@ fn writeflow_addmpq(
     builder: &mut Builder,
     archive: &mut FileArchive,
     options: FileOptions,
-) -> Result<bool, AnyError> {
+) -> Result<bool, anyhow::Error> {
     let files = archive
         .files()
         .ok_or_else(|| StringError::new("no listfile found"))?;
@@ -255,7 +254,7 @@ fn writeflow_addmpq(
     Ok(true)
 }
 
-fn writeflow_write(builder: &mut Builder, path: LuaString) -> Result<bool, AnyError> {
+fn writeflow_write(builder: &mut Builder, path: LuaString) -> Result<bool, anyhow::Error> {
     let path: PathBuf = path.to_str()?.into();
 
     fs::create_dir_all(path.parent().unwrap())
@@ -274,7 +273,7 @@ fn writeflow_write(builder: &mut Builder, path: LuaString) -> Result<bool, AnyEr
     Ok(true)
 }
 
-fn writeflow_new() -> Result<Builder, AnyError> {
+fn writeflow_new() -> Result<Builder, anyhow::Error> {
     let creator = Creator::default();
 
     Ok(Builder { creator })

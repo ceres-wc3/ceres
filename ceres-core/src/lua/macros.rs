@@ -1,17 +1,16 @@
+use std::cell::RefCell;
+use std::collections::HashMap;
+use std::ops::Deref;
+use std::rc::Rc;
+use std::thread_local;
+
 use rlua::prelude::*;
 
-use std::collections::HashMap;
-use std::thread_local;
-use std::rc::Rc;
-use std::cell::RefCell;
-use std::ops::Deref;
+use compiler::MacroProvider;
 
 use crate::compiler;
-
-use crate::lua::util::evaluate_macro_args;
 use crate::error::*;
-
-use compiler::MacroProvider;
+use crate::lua::util::evaluate_macro_args;
 
 pub struct LuaMacroProvider {
     registered_macros: RefCell<HashMap<String, LuaRegistryKey>>,

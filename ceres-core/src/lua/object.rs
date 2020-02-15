@@ -1,18 +1,18 @@
 use std::cell::RefCell;
+use std::collections::HashSet;
 use std::rc::Rc;
-use std::collections::{BTreeSet, HashSet};
 
 use rlua::prelude::*;
-use atoi::atoi;
-use anyhow::anyhow;
 
+use anyhow::anyhow;
+use atoi::atoi;
 use ceres_formats::{ObjectId, ObjectKind};
 use ceres_formats::metadata::FieldDesc;
 use ceres_formats::object::{Object, Value};
 use ceres_formats::objectstore::ObjectStore;
 use ceres_formats::parser::w3obj;
 
-use crate::error::{AnyError, StringError};
+use crate::error::StringError;
 use crate::lua::util::*;
 
 fn get_field_for<C>(object: &Object, field_getter: C) -> Option<&Value>
@@ -418,7 +418,7 @@ impl LuaUserData for LuaObjectStoreWrapper {
 
 // standalone functions
 
-fn open_store_from_str(source: &[u8], kind: ObjectKind) -> Result<LuaObjectStoreWrapper, AnyError> {
+fn open_store_from_str(source: &[u8], kind: ObjectKind) -> Result<LuaObjectStoreWrapper, anyhow::Error> {
     let mut data = ObjectStore::default();
     w3obj::read::read_object_file(source, &mut data, kind)?;
 
