@@ -6,7 +6,7 @@ fn main() {
     dotenv::dotenv().ok();
 
     let matches = clap_app!(Ceres =>
-        (version: "0.3.2")
+        (version: "0.3.3")
         (author: "mori <mori@reu.moe>")
         (about: "Ceres is a build tool, script compiler and map preprocessor for WC3 Lua maps.")
         (@subcommand build =>

@@ -1,3 +1,10 @@
+# 0.3.3
+
+* `fs.watchFile` no longer blocks. instead, Ceres spins up an event loop after the build script finishes where it processes file watchers started by `fs.watchFile`. The event loop will terminate if a WC3 instance launched by Ceres has exited. If WC3 wasn't started, then the event loop will continue running indefenitely until manually terminated.
+* The object API now has `getObject`, `setObject`, `getField` and `setField` methods for object storages and objects. They function identically to their indexing counterparts, and are meant for usage in TypeScript where the type system cannot correctly express the types returned from indexing operations in all cases.
+* `-launch` is now automatically appended to WC3 arguments when running via Ceres.
+* Files added via `map:addFileString`, `map:addFileDisk`, and `map:addDir` can now be read back via `map:readFile`. Previously, `map:readFile` would only return files that already existed in the map mpq/dir.
+
 # 0.3.2
 
 * Fixed a small bug where Ceres would not quit after building, even when no Live Reload was enabled.
