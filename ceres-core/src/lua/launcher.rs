@@ -33,6 +33,7 @@ fn run_map(map_path: &str, config: LaunchConfig) -> Result<(), anyhow::Error> {
     let log_file = fs::File::create("war3.log").context("could not create wc3 log file")?;
     cmd.arg("-loadfile")
         .arg(map_path.as_ref())
+        .arg("-launch")
         .stdout(
             log_file
                 .try_clone()
