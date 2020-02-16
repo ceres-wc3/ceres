@@ -27,9 +27,13 @@ where
 }
 
 struct StaticMethodKeys {
-    obj_clone:      LuaRegistryKey,
-    objstore_read:  LuaRegistryKey,
-    objstore_write: LuaRegistryKey,
+    obj_getfield:       LuaRegistryKey,
+    obj_setfield:       LuaRegistryKey,
+    obj_clone:          LuaRegistryKey,
+    objstore_read:      LuaRegistryKey,
+    objstore_write:     LuaRegistryKey,
+    objstore_setobject: LuaRegistryKey,
+    objstore_getobject: LuaRegistryKey,
 }
 
 thread_local! {
@@ -37,17 +41,25 @@ thread_local! {
 }
 
 struct StaticMethods<'lua> {
-    obj_clone:      LuaFunction<'lua>,
-    objstore_read:  LuaFunction<'lua>,
-    objstore_write: LuaFunction<'lua>,
+    obj_getfield:       LuaFunction<'lua>,
+    obj_setfield:       LuaFunction<'lua>,
+    obj_clone:          LuaFunction<'lua>,
+    objstore_read:      LuaFunction<'lua>,
+    objstore_write:     LuaFunction<'lua>,
+    objstore_setobject: LuaFunction<'lua>,
+    objstore_getobject: LuaFunction<'lua>,
 }
 
 impl<'lua> StaticMethods<'lua> {
     fn new(ctx: LuaContext<'lua>, keys: &StaticMethodKeys) -> StaticMethods<'lua> {
         StaticMethods {
-            obj_clone:      ctx.registry_value(&keys.obj_clone).unwrap(),
-            objstore_read:  ctx.registry_value(&keys.objstore_read).unwrap(),
-            objstore_write: ctx.registry_value(&keys.objstore_write).unwrap(),
+            obj_getfield:       ctx.registry_value(&keys.obj_getfield).unwrap(),
+            obj_setfield:       ctx.registry_value(&keys.obj_setfield).unwrap(),
+            obj_clone:          ctx.registry_value(&keys.obj_clone).unwrap(),
+            objstore_read:      ctx.registry_value(&keys.objstore_read).unwrap(),
+            objstore_write:     ctx.registry_value(&keys.objstore_write).unwrap(),
+            objstore_getobject: ctx.registry_value(&keys.objstore_getobject).unwrap(),
+            objstore_setobject: ctx.registry_value(&keys.objstore_setobject).unwrap(),
         }
     }
 
@@ -57,26 +69,74 @@ impl<'lua> StaticMethods<'lua> {
     {
         OBJECT_METHODS.with(|keys| {
             if keys.borrow().is_none() {
-                let clone = ctx
-                    .create_registry_value(ctx.create_function(LuaObjectWrapper::clone).unwrap())
-                    .unwrap();
-
-                let read = ctx
+                let objstore_read = ctx
                     .create_registry_value(
                         ctx.create_function(LuaObjectStoreWrapper::read).unwrap(),
                     )
                     .unwrap();
 
-                let write = ctx
+                let objstore_write = ctx
                     .create_registry_value(
                         ctx.create_function(LuaObjectStoreWrapper::write).unwrap(),
                     )
                     .unwrap();
 
+                let objstore_getobject = ctx
+                    .create_registry_value(
+                        ctx.create_function(|ctx, (object, key): (LuaAnyUserData, LuaValue)| {
+                            let mut object = object.borrow_mut::<LuaObjectStoreWrapper>()?;
+                            LuaObjectStoreWrapper::get_object(ctx, (&mut object, key))
+                        })
+                        .unwrap(),
+                    )
+                    .unwrap();
+
+                let objstore_setobject = ctx
+                    .create_registry_value(
+                        ctx.create_function(
+                            |ctx, (object, key, value): (LuaAnyUserData, LuaValue, LuaValue)| {
+                                let mut object = object.borrow_mut::<LuaObjectStoreWrapper>()?;
+                                LuaObjectStoreWrapper::set_object(ctx, (&mut object, key, value))
+                            },
+                        )
+                        .unwrap(),
+                    )
+                    .unwrap();
+
+                let obj_clone = ctx
+                    .create_registry_value(ctx.create_function(LuaObjectWrapper::clone).unwrap())
+                    .unwrap();
+
+                let obj_setfield = ctx
+                    .create_registry_value(
+                        ctx.create_function(
+                            |ctx, (object, key, value): (LuaAnyUserData, LuaValue, LuaValue)| {
+                                let object = object.borrow::<LuaObjectWrapper>()?;
+                                LuaObjectWrapper::set_field(ctx, (&object, key, value))
+                            },
+                        )
+                        .unwrap(),
+                    )
+                    .unwrap();
+
+                let obj_getfield = ctx
+                    .create_registry_value(
+                        ctx.create_function(|ctx, (object, key): (LuaAnyUserData, LuaValue)| {
+                            let object = object.borrow::<LuaObjectWrapper>()?;
+                            LuaObjectWrapper::get_field(ctx, (&object, key))
+                        })
+                        .unwrap(),
+                    )
+                    .unwrap();
+
                 *keys.borrow_mut() = Some(StaticMethodKeys {
-                    obj_clone:      clone,
-                    objstore_read:  read,
-                    objstore_write: write,
+                    obj_setfield,
+                    obj_getfield,
+                    obj_clone,
+                    objstore_read,
+                    objstore_write,
+                    objstore_getobject,
+                    objstore_setobject,
                 })
             }
 
@@ -88,19 +148,43 @@ impl<'lua> StaticMethods<'lua> {
         })
     }
 
-    fn clone_fn(ctx: LuaContext) -> LuaValue {
+    fn obj_getfield_fn(ctx: LuaContext) -> LuaValue {
+        Self::with(ctx, |_ctx, methods| {
+            LuaValue::Function(methods.obj_getfield)
+        })
+    }
+
+    fn obj_setfield_fn(ctx: LuaContext) -> LuaValue {
+        Self::with(ctx, |_ctx, methods| {
+            LuaValue::Function(methods.obj_setfield)
+        })
+    }
+
+    fn obj_clone_fn(ctx: LuaContext) -> LuaValue {
         Self::with(ctx, |_ctx, methods| LuaValue::Function(methods.obj_clone))
     }
 
-    fn read_fn(ctx: LuaContext) -> LuaValue {
+    fn objstore_read_fn(ctx: LuaContext) -> LuaValue {
         Self::with(ctx, |_ctx, methods| {
             LuaValue::Function(methods.objstore_read)
         })
     }
 
-    fn write_fn(ctx: LuaContext) -> LuaValue {
+    fn objstore_write_fn(ctx: LuaContext) -> LuaValue {
         Self::with(ctx, |_ctx, methods| {
             LuaValue::Function(methods.objstore_write)
+        })
+    }
+
+    fn objstore_getobject_fn(ctx: LuaContext) -> LuaValue {
+        Self::with(ctx, |_ctx, methods| {
+            LuaValue::Function(methods.objstore_getobject)
+        })
+    }
+
+    fn objstore_setobject_fn(ctx: LuaContext) -> LuaValue {
+        Self::with(ctx, |_ctx, methods| {
+            LuaValue::Function(methods.objstore_setobject)
         })
     }
 }
@@ -176,31 +260,17 @@ impl LuaObjectWrapper {
         Ok(result)
     }
 
-    fn index<'lua>(
+    fn get_field<'lua>(
         ctx: LuaContext<'lua>,
-        object: &mut LuaObjectWrapper,
-        key: LuaValue<'lua>,
-    ) -> Result<LuaValue<'lua>, LuaError> {
-        let object = &object.inner.borrow();
+        (object, key): (&LuaObjectWrapper, LuaValue<'lua>),
+    ) -> Result<impl ToLua<'lua>, LuaError> {
+        let object = object.inner.borrow();
 
-        if let Ok(key) = LuaString::from_lua(key.clone(), ctx) {
-            let key = key.as_bytes();
-
-            match key {
-                b"all" => return Ok(Self::fields(ctx, &object)?),
-                b"clone" => return Ok(StaticMethods::clone_fn(ctx)),
-                b"id" => return Ok(object.id().to_lua(ctx)?),
-                b"parentId" => return Ok(object.parent_id().to_lua(ctx)?),
-                b"type" => return Ok(object.kind().to_typestr().to_lua(ctx)?),
-                _ => {}
-            }
-        }
-
-        if let Some((field_desc, level)) = Self::translate_field_name(ctx, key, object)? {
+        if let Some((field_desc, level)) = Self::translate_field_name(ctx, key, &object)? {
             let field = if let Some(level) = level {
-                get_field_for(object, |o| o.leveled_field(field_desc.id, level))
+                get_field_for(&object, |o| o.leveled_field(field_desc.id, level))
             } else {
-                get_field_for(object, |o| o.simple_field(field_desc.id))
+                get_field_for(&object, |o| o.simple_field(field_desc.id))
             };
 
             if let Some(field) = field {
@@ -211,12 +281,12 @@ impl LuaObjectWrapper {
         Ok(LuaValue::Nil)
     }
 
-    fn newindex<'lua>(
+    fn set_field<'lua>(
         ctx: LuaContext<'lua>,
-        object: &mut LuaObjectWrapper,
-        (key, value): (LuaValue<'lua>, LuaValue<'lua>),
+        (object, key, value): (&LuaObjectWrapper, LuaValue<'lua>, LuaValue<'lua>),
     ) -> Result<impl ToLuaMulti<'lua>, LuaError> {
         let object = &mut object.inner.borrow_mut();
+
         if let Some((field_desc, level)) = Self::translate_field_name(ctx, key, object)? {
             if let LuaValue::Nil = value {
                 if let Some(level) = level {
@@ -233,12 +303,45 @@ impl LuaObjectWrapper {
                 }
             }
 
-            return Ok(());
+            return Ok(LuaValue::Nil);
         }
 
         Err(LuaError::external(anyhow!(
             "cannot set unknown field on object"
         )))
+    }
+
+    fn index<'lua>(
+        ctx: LuaContext<'lua>,
+        object: &mut LuaObjectWrapper,
+        key: LuaValue<'lua>,
+    ) -> Result<impl ToLua<'lua>, LuaError> {
+        let object_inner = &object.inner.borrow();
+
+        if let Ok(key) = LuaString::from_lua(key.clone(), ctx) {
+            let key = key.as_bytes();
+
+            match key {
+                b"all" => return Ok(Self::fields(ctx, &object_inner)?),
+                b"clone" => return Ok(StaticMethods::obj_clone_fn(ctx)),
+                b"setField" => return Ok(StaticMethods::obj_setfield_fn(ctx)),
+                b"getField" => return Ok(StaticMethods::obj_getfield_fn(ctx)),
+                b"id" => return Ok(object_inner.id().to_lua(ctx)?),
+                b"parentId" => return Ok(object_inner.parent_id().to_lua(ctx)?),
+                b"type" => return Ok(object_inner.kind().to_typestr().to_lua(ctx)?),
+                _ => {}
+            }
+        }
+
+        Ok(Self::get_field(ctx, (object, key))?.to_lua(ctx)?)
+    }
+
+    fn newindex<'lua>(
+        ctx: LuaContext<'lua>,
+        object: &mut LuaObjectWrapper,
+        (key, value): (LuaValue<'lua>, LuaValue<'lua>),
+    ) -> Result<impl ToLuaMulti<'lua>, LuaError> {
+        Self::set_field(ctx, (object, key, value))
     }
 }
 
@@ -320,26 +423,12 @@ impl LuaObjectStoreWrapper {
         Ok(LuaValue::Table(table))
     }
 
-    fn index<'lua>(
+    fn get_object<'lua>(
         ctx: LuaContext<'lua>,
-        data: &mut LuaObjectStoreWrapper,
-        key: LuaValue<'lua>,
+        (data, key): (&mut LuaObjectStoreWrapper, LuaValue<'lua>),
     ) -> Result<LuaValue<'lua>, LuaError> {
         let kind = data.kind;
         let data = &mut data.inner;
-
-        if let Ok(key) = LuaString::from_lua(key.clone(), ctx) {
-            let key = key.as_bytes();
-
-            match key {
-                b"all" => return Self::objects(ctx, data, kind),
-                b"readFromString" => return Ok(StaticMethods::read_fn(ctx)),
-                b"writeToString" => return Ok(StaticMethods::write_fn(ctx)),
-                b"ext" => return Ok(kind.to_ext().to_lua(ctx)?),
-                b"typestr" => return Ok(kind.to_typestr().to_lua(ctx)?),
-                _ => {}
-            }
-        }
 
         if let Ok(id) = ObjectId::from_lua(key, ctx) {
             return Self::object_or_new(data, kind, id)
@@ -350,10 +439,9 @@ impl LuaObjectStoreWrapper {
         Ok(LuaValue::Nil)
     }
 
-    fn newindex<'lua>(
+    fn set_object<'lua>(
         ctx: LuaContext<'lua>,
-        data: &mut LuaObjectStoreWrapper,
-        (key, value): (LuaValue<'lua>, LuaValue<'lua>),
+        (data, key, value): (&mut LuaObjectStoreWrapper, LuaValue<'lua>, LuaValue<'lua>),
     ) -> Result<LuaValue<'lua>, LuaError> {
         let data = &mut data.inner;
 
@@ -394,6 +482,40 @@ impl LuaObjectStoreWrapper {
             )))
         }
     }
+
+    fn index<'lua>(
+        ctx: LuaContext<'lua>,
+        data: &mut LuaObjectStoreWrapper,
+        key: LuaValue<'lua>,
+    ) -> Result<LuaValue<'lua>, LuaError> {
+        let kind = data.kind;
+        let data_inner = &mut data.inner;
+
+        if let Ok(key) = LuaString::from_lua(key.clone(), ctx) {
+            let key = key.as_bytes();
+
+            match key {
+                b"all" => return Self::objects(ctx, data_inner, kind),
+                b"readFromString" => return Ok(StaticMethods::objstore_read_fn(ctx)),
+                b"writeToString" => return Ok(StaticMethods::objstore_write_fn(ctx)),
+                b"getObject" => return Ok(StaticMethods::objstore_getobject_fn(ctx)),
+                b"setObject" => return Ok(StaticMethods::objstore_setobject_fn(ctx)),
+                b"ext" => return Ok(kind.to_ext().to_lua(ctx)?),
+                b"typestr" => return Ok(kind.to_typestr().to_lua(ctx)?),
+                _ => {}
+            }
+        }
+
+        Self::get_object(ctx, (data, key))
+    }
+
+    fn newindex<'lua>(
+        ctx: LuaContext<'lua>,
+        data: &mut LuaObjectStoreWrapper,
+        (key, value): (LuaValue<'lua>, LuaValue<'lua>),
+    ) -> Result<LuaValue<'lua>, LuaError> {
+        Self::set_object(ctx, (data, key, value))
+    }
 }
 
 impl LuaUserData for LuaObjectWrapper {
@@ -418,7 +540,10 @@ impl LuaUserData for LuaObjectStoreWrapper {
 
 // standalone functions
 
-fn open_store_from_str(source: &[u8], kind: ObjectKind) -> Result<LuaObjectStoreWrapper, anyhow::Error> {
+fn open_store_from_str(
+    source: &[u8],
+    kind: ObjectKind,
+) -> Result<LuaObjectStoreWrapper, anyhow::Error> {
     let mut data = ObjectStore::default();
     w3obj::read::read_object_file(source, &mut data, kind)?;
 

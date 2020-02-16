@@ -88,6 +88,16 @@ mapMeta.__index = mapMeta
 
 -- Reads a file from the map and returns its contents as a string if successful
 function mapMeta:readFile(path)
+    local added = self.added[path]
+
+    if added then
+        if added.kind == "string" then
+            return added.contents
+        elseif added.kind == "file" then
+            return fs.readFile(added.path)
+        end
+    end
+
     if self.kind == "mpq" then
         return self.archive:readFile(path)
     elseif self.kind == "dir" then
