@@ -1,3 +1,7 @@
+# 0.3.4
+
+* Attempted to fix an issue where sometimes field types in the OE API would not resolve correctly, causing some fields (such as `weapsOn`) to not work correctly.
+
 # 0.3.3
 
 * `fs.watchFile` no longer blocks. instead, Ceres spins up an event loop after the build script finishes where it processes file watchers started by `fs.watchFile`. The event loop will terminate if a WC3 instance launched by Ceres has exited. If WC3 wasn't started, then the event loop will continue running indefenitely until manually terminated.

@@ -137,7 +137,10 @@ impl ValueType {
         match input {
             "real" => ValueType::Real,
             "unreal" => ValueType::Unreal,
-            "int" | "bool" => ValueType::Int,
+            "int" | "bool" | "attackBits" | "deathType" | "defenseTypeInt" | "detectionType"
+            | "teamColor" | "morphFlags" | "silenceFlags" | "stackFlags" | "interactionFlags"
+            | "pickFlags" | "versionFlags" | "fullFlags" | "channelType" | "channelFlags"
+            | "spellDetail" | "techAvail" => ValueType::Int,
             _ => ValueType::String,
         }
     }
