@@ -1,3 +1,9 @@
+use rlua::prelude::*;
+use serde::{Deserialize, Serialize};
+
+use anyhow::anyhow;
+use bitflags::bitflags;
+
 pub mod parser {
     pub mod slk;
     pub mod crlf;
@@ -9,11 +15,6 @@ pub mod error;
 pub mod metadata;
 pub mod object;
 pub mod objectstore;
-
-use serde::{Serialize, Deserialize};
-use bitflags::bitflags;
-use rlua::prelude::*;
-use anyhow::anyhow;
 
 #[derive(Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord, Serialize, Deserialize)]
 /// A WC3 object id, which is conceptually a simple 32-bit integer,

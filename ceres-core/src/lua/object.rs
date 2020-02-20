@@ -246,7 +246,6 @@ impl LuaObjectWrapper {
                     None
                 };
 
-                let id = field_desc.id.to_string();
                 if (level.is_some() && field_desc.variant.is_leveled())
                     || (level.is_none() && !field_desc.variant.is_leveled())
                 {
@@ -551,7 +550,7 @@ fn open_store_from_str(
 }
 
 fn get_open_store_from_str_luafn(ctx: LuaContext) -> LuaFunction {
-    ctx.create_function(|ctx: LuaContext, (data, ext): (LuaString, LuaString)| {
+    ctx.create_function(|_ctx: LuaContext, (data, ext): (LuaString, LuaString)| {
         let data = data.as_bytes();
         let kind = ObjectKind::from_ext(ext.to_str()?);
 
@@ -571,7 +570,7 @@ fn get_open_store_from_str_luafn(ctx: LuaContext) -> LuaFunction {
 }
 
 fn get_open_store_blank_luafn(ctx: LuaContext) -> LuaFunction {
-    ctx.create_function(|ctx: LuaContext, ext: LuaString| {
+    ctx.create_function(|_ctx: LuaContext, ext: LuaString| {
         let kind = ObjectKind::from_ext(ext.to_str()?);
 
         if kind == ObjectKind::empty() {

@@ -1,12 +1,10 @@
-use std::error::Error;
-
 use clap::clap_app;
 
 fn main() {
     dotenv::dotenv().ok();
 
     let matches = clap_app!(Ceres =>
-        (version: "0.3.4")
+        (version: "0.3.5")
         (author: "mori <mori@reu.moe>")
         (about: "Ceres is a build tool, script compiler and map preprocessor for WC3 Lua maps.")
         (@subcommand build =>
@@ -64,7 +62,7 @@ fn run_build(arg: &clap::ArgMatches, mode: ceres_core::CeresRunMode) -> Result<(
         .value_of("manifest")
         .map(|s| u16::from_str_radix(s, 10).unwrap());
 
-    ceres_core::run_build_script(mode, project_dir, script_args, manifest_port)?;
+    ceres_core::run_build_script(mode, project_dir, script_args)?;
 
     Ok(())
 }
@@ -77,7 +75,12 @@ fn exec(arg: &clap::ArgMatches) -> Result<(), anyhow::Error> {
 
     let script = std::fs::read_to_string(script)?;
 
-    ceres_core::execute_script(ceres_core::CeresRunMode::Build, Vec::new(), None, |ctx| {
+    let script_args = arg
+        .values_of("BUILD_ARGS")
+        .map(std::iter::Iterator::collect)
+        .unwrap_or_else(Vec::new);
+
+    ceres_core::execute_script(ceres_core::CeresRunMode::Build, script_args, |ctx| {
         ctx.load(&script).exec()?;
 
         Ok(())

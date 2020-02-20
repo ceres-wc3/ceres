@@ -1,18 +1,18 @@
-use std::fs;
-use std::path::Path;
 use std::collections::BTreeMap;
 use std::collections::HashMap;
+use std::fs;
+use std::path::Path;
 
-use serde::{Serialize, Deserialize};
-use slotmap::{new_key_type, DenseSlotMap};
+use serde::{Deserialize, Serialize};
+use slotmap::{DenseSlotMap, new_key_type};
 
+use crate::object::Object;
+use crate::ObjectId;
+use crate::ObjectKind;
 use crate::parser::slk;
 use crate::parser::slk::read_row_num;
 use crate::parser::slk::read_row_str;
-use crate::ObjectId;
-use crate::ObjectKind;
 use crate::ValueType;
-use crate::object::Object;
 
 new_key_type! {
     struct FieldKey;

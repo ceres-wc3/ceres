@@ -2,6 +2,7 @@ use std::cell::RefCell;
 use std::rc::Rc;
 use std::sync::mpsc::*;
 
+use anyhow::Context as _;
 use rlua::Lua;
 use rlua::prelude::{LuaContext, LuaError};
 
@@ -59,7 +60,7 @@ pub fn wait_on_evloop(lua: Rc<Lua>) {
 
                         if result.is_err() {
                             println!("[ERROR] An error occured inside the event loop. The event loop will terminate.");
-                            handle_lua_result(&result);
+                            handle_lua_result(result.context("evloop callback failed"));
                             return false;
                         }
 

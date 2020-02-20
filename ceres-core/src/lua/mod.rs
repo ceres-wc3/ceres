@@ -1,11 +1,5 @@
-use std::io::Write;
-use std::net::TcpStream;
-use std::rc::Rc;
-
 use rlua::prelude::*;
-use rlua_serde::from_value;
 use serde::{Deserialize, Serialize};
-use serde_json::to_string;
 
 use crate::CeresRunMode;
 
@@ -29,21 +23,7 @@ struct ProjectLayout {
     target_directory: String,
 }
 
-fn send_layout(port: Option<u16>, layout: LuaTable) {
-    if let Some(port) = port {
-        let layout: ProjectLayout = from_value(LuaValue::Table(layout)).unwrap();
-        let layout = to_string(&layout).unwrap();
-        let mut connection = TcpStream::connect(("localhost", port)).unwrap();
-        write!(connection, "{}", layout).unwrap();
-    }
-}
-
-pub fn setup_ceres_environ(
-    ctx: LuaContext,
-    run_mode: CeresRunMode,
-    script_args: Vec<String>,
-    extension_port: Option<u16>,
-) {
+pub fn setup_ceres_environ(ctx: LuaContext, run_mode: CeresRunMode, script_args: Vec<String>) {
     const CERES_BUILDSCRIPT_LIB: &str = include_str!("../resource/buildscript_lib.lua");
 
     let globals = ctx.globals();
@@ -64,25 +44,6 @@ pub fn setup_ceres_environ(
                 CeresRunMode::RunMap => Ok(ctx.create_string("run")),
                 CeresRunMode::Build => Ok(ctx.create_string("build")),
                 CeresRunMode::LiveReload => Ok(ctx.create_string("reload")),
-            })
-            .unwrap(),
-        )
-        .unwrap();
-
-    ceres_table
-        .set(
-            "isLayoutRequested",
-            ctx.create_function(move |_, _: ()| Ok(extension_port.is_some()))
-                .unwrap(),
-        )
-        .unwrap();
-
-    ceres_table
-        .set(
-            "sendLayout",
-            ctx.create_function(move |_, layout: LuaTable| {
-                send_layout(extension_port, layout);
-                Ok(())
             })
             .unwrap(),
         )

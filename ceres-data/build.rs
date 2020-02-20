@@ -1,6 +1,6 @@
 use std::env;
-use std::path::PathBuf;
 use std::fs;
+use std::path::PathBuf;
 
 use ceres_formats::metadata;
 use ceres_formats::objectstore;

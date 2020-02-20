@@ -57,7 +57,10 @@ fn lua_copy_file(from: &str, to: &str) -> Result<(), anyhow::Error> {
     Ok(())
 }
 
-fn lua_read_file<'lua>(ctx: LuaContext<'lua>, path: &str) -> Result<LuaString<'lua>, anyhow::Error> {
+fn lua_read_file<'lua>(
+    ctx: LuaContext<'lua>,
+    path: &str,
+) -> Result<LuaString<'lua>, anyhow::Error> {
     let path = validate_path(&path)?;
 
     let content = fs::read(path)?;
@@ -148,12 +151,12 @@ fn lua_watch_file<'lua>(
     let (tx, rx) = mpsc::channel();
     let mut watcher = watcher(tx, Duration::from_millis(100))?;
     fs::write(&path, "")?;
+    let evloop_tx = get_event_loop_tx();
 
     std::thread::spawn(move || {
         watcher
             .watch(&path, RecursiveMode::NonRecursive)
             .expect("couldn't start file watcher");
-        let evloop_tx = get_event_loop_tx();
 
         loop {
             match rx.recv() {

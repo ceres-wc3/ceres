@@ -161,7 +161,7 @@ function mapMeta:writeToDir(path)
         if v.kind == "string" then
             fs.writeFile(path .. k:gsub("%\\", "/"), v.contents)
         elseif v.kind == "file" then
-            fs.copyFile(v.filePath, path .. k:gsub("%\\", "/"))
+            fs.copyFile(v.path, path .. k:gsub("%\\", "/"))
         end
     end
 end
@@ -434,11 +434,6 @@ end
 -- The default handler for "build" and "run" commands in Ceres
 -- Will parse the arguments and invoke ceres.buildMap()
 function ceres.defaultHandler()
-    if ceres.isLayoutRequested() then
-        ceres.sendLayout(ceres.layout)
-        return
-    end
-
     if handlerSuppressed then
         return
     end

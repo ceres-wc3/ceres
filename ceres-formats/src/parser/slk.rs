@@ -1,9 +1,10 @@
-use std::str;
-use std::iter::Peekable;
 use std::collections::HashMap;
+use std::iter::Peekable;
+use std::str;
+
+use num_traits::Num;
 
 use atoi::atoi;
-use num_traits::Num;
 
 use crate::parser::crlf::Lines;
 

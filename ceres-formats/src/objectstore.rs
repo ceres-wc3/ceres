@@ -7,11 +7,11 @@ use std::rc::Rc;
 use serde::{Deserialize, Serialize};
 
 use crate::metadata::MetadataStore;
+use crate::object::*;
 use crate::ObjectId;
 use crate::ObjectKind;
 use crate::parser::profile;
 use crate::parser::slk;
-use crate::object::*;
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct ObjectStore {

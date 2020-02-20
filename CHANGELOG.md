@@ -1,3 +1,12 @@
+# 0.3.5
+
+* Fixed an issue with `map:addDir` and `dir` mapmode.
+* Fixed an issue with `fs.watchFile` not working correctly.
+* Fixed an issue with script arguments not being passed to `ceres exec`.
+* Upstreamed fix from `ceres-mpq` for crashes caused by empty files in MPQs.
+* Removed some old unused functionality from Ceres.
+* Slightly improved error reporting in certain cases.
+
 # 0.3.4
 
 * Attempted to fix an issue where sometimes field types in the OE API would not resolve correctly, causing some fields (such as `weapsOn`) to not work correctly.

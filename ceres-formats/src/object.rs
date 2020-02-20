@@ -134,7 +134,7 @@ impl Object {
     pub fn unset_leveled_field(&mut self, id: ObjectId, level: u32) {
         if let Some(field) = self.fields.get_mut(&id) {
             if let FieldKind::Leveled { values } = &mut field.kind {
-                values.retain(|dv| !(dv.level == level))
+                values.retain(|dv| dv.level != level)
             }
         }
     }

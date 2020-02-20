@@ -9,12 +9,12 @@ ceres-parsers = {path = "../ceres-parsers"}
 ceres-formats = {path = "../ceres-formats"}
 ceres-core = {path = "../ceres-core"}
 
-serde = "1.0.103"
+serde = "1.0.104"
 pest = "2.1.2"
 rlua = "0.16.3"
 ron = "0.5.1"
 bincode = "1.2.1"
-anyhow = "1.0.25"
+anyhow = "1.0.26"
 dotenv = "0.15.0"
 
 [dependencies.clap]

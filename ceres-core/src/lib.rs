@@ -3,6 +3,7 @@
 extern crate ceres_data as w3data;
 extern crate ceres_mpq as mpq;
 
+use std::error::Error;
 use std::fs;
 use std::path::PathBuf;
 use std::rc::Rc;
@@ -24,26 +25,36 @@ pub enum CeresRunMode {
     LiveReload,
 }
 
-pub fn handle_lua_result(result: &Result<(), LuaError>) {
-    if let Err(LuaError::ExternalError(cause)) = &result {
-        if let Some(LuaError::CallbackError { traceback, cause }) = cause.downcast_ref::<LuaError>()
-        {
-            println!("[ERROR] An error occured while executing the script:");
-            println!("{}", cause);
-            println!("{}", traceback);
-        } else {
-            println!("[ERROR] Unknown error:");
-            println!("[ERROR] {}", cause);
+pub fn lua_error_root_cause(error: &LuaError) -> anyhow::Error {
+    match error {
+        LuaError::CallbackError { traceback, cause } => {
+            anyhow::anyhow!("{}\n{}", lua_error_root_cause(cause), traceback)
         }
-    } else if let Err(err) = &result {
-        println!("[ERROR] A Lua error occured in the build script:\n{}", err);
+        LuaError::ExternalError(external) => {
+            if let Some(error) = Error::downcast_ref::<LuaError>(external.as_ref()) {
+                lua_error_root_cause(error)
+            } else {
+                anyhow::anyhow!("{}", external)
+            }
+        }
+        other => anyhow::anyhow!("{}", other),
+    }
+}
+
+pub fn handle_lua_result(result: anyhow::Result<()>) {
+    if let Err(err) = result {
+        match err.downcast::<LuaError>() {
+            Ok(err) => {
+                println!("{}", lua_error_root_cause(&err));
+            }
+            Err(err) => println!("{}", err),
+        }
     }
 }
 
 pub fn execute_script<F>(
     run_mode: CeresRunMode,
     script_args: Vec<&str>,
-    extension_port: Option<u16>,
     action: F,
 ) -> Result<(), anyhow::Error>
 where
@@ -53,25 +64,24 @@ where
 
     let lua = Rc::new(Lua::new());
 
-    let result: Result<(), LuaError> = lua.context(|ctx| {
+    let result: Result<(), anyhow::Error> = lua.context(|ctx| {
         lua::setup_ceres_environ(
             ctx,
             run_mode,
             script_args.into_iter().map(|s| s.into()).collect(),
-            extension_port,
         );
 
-        action(ctx).map_err(LuaError::external)?;
+        action(ctx)?;
 
         Ok(())
     });
 
-    handle_lua_result(&result);
-    wait_on_evloop(Rc::clone(&lua));
-
     if result.is_err() {
+        handle_lua_result(result);
         std::process::exit(1);
     }
+
+    wait_on_evloop(Rc::clone(&lua));
 
     Ok(())
 }
@@ -80,7 +90,6 @@ pub fn run_build_script(
     run_mode: CeresRunMode,
     project_dir: PathBuf,
     script_args: Vec<&str>,
-    extension_port: Option<u16>,
 ) -> Result<(), anyhow::Error> {
     const DEFAULT_BUILD_SCRIPT: &str = include_str!("resource/buildscript_default.lua");
 
@@ -95,7 +104,7 @@ pub fn run_build_script(
         None
     };
 
-    execute_script(run_mode, script_args, extension_port, |ctx| {
+    execute_script(run_mode, script_args, |ctx| {
         if let Some(build_script) = build_script {
             ctx.load(&build_script)
                 .set_name("custom build script")
