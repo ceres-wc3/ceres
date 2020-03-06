@@ -356,10 +356,11 @@ impl LuaObjectStoreWrapper {
     ) -> Result<LuaValue<'lua>, LuaError> {
         let mut data = data.borrow_mut::<LuaObjectStoreWrapper>()?;
         let kind = data.kind;
-        let data = &mut data.inner;
+        let mut data = &mut data.inner;
         let value = LuaString::from_lua(value, ctx)?;
 
         w3obj::read::read_object_file(value.as_bytes(), data, kind).map_err(LuaError::external)?;
+        data.reset_dirty();
 
         Ok(LuaValue::Nil)
     }
@@ -501,6 +502,7 @@ impl LuaObjectStoreWrapper {
                 b"setObject" => return Ok(StaticMethods::objstore_setobject_fn(ctx)),
                 b"ext" => return Ok(kind.to_ext().to_lua(ctx)?),
                 b"typestr" => return Ok(kind.to_typestr().to_lua(ctx)?),
+                b"isDirty" => return Ok(data_inner.is_dirty().to_lua(ctx)?),
                 _ => {}
             }
         }
@@ -545,6 +547,7 @@ fn open_store_from_str(
 ) -> Result<LuaObjectStoreWrapper, anyhow::Error> {
     let mut data = ObjectStore::default();
     w3obj::read::read_object_file(source, &mut data, kind)?;
+    data.reset_dirty();
 
     Ok(LuaObjectStoreWrapper { inner: data, kind })
 }

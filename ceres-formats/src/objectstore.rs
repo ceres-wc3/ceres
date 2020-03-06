@@ -40,6 +40,24 @@ impl Default for ObjectStoreStock {
 }
 
 impl ObjectStore {
+    pub fn is_dirty(&self) -> bool {
+        for object in self.objects.values() {
+            let object = object.borrow();
+            if object.is_dirty() {
+                return true;
+            }
+        }
+
+        false
+    }
+
+    pub fn reset_dirty(&self) {
+        for object in self.objects.values() {
+            let mut object = object.borrow_mut();
+            object.set_dirty(false);
+        }
+    }
+
     pub fn objects(&self) -> impl Iterator<Item = &Rc<RefCell<Object>>> {
         self.objects.values()
     }

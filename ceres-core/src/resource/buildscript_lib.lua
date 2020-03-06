@@ -229,8 +229,10 @@ function mapMeta:initObjects()
 end
 
 function mapMeta:commitObjectStorage(storage)
-    local data = storage:writeToString()
-    self:addFileString("war3map." .. storage.ext, data)
+    if storage.isDirty then
+        local data = storage:writeToString()
+        self:addFileString("war3map." .. storage.ext, data)
+    end
 end
 
 function mapMeta:commitObjects()

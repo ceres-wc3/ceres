@@ -61,6 +61,7 @@ pub struct Object {
     id:        ObjectId,
     parent_id: Option<ObjectId>,
     fields:    BTreeMap<ObjectId, Field>,
+    dirty: bool,
 }
 
 impl Object {
@@ -70,6 +71,7 @@ impl Object {
             kind,
             parent_id: None,
             fields: Default::default(),
+            dirty: true,
         }
     }
 
@@ -79,6 +81,7 @@ impl Object {
             kind,
             parent_id: Some(parent_id),
             fields: Default::default(),
+            dirty: true,
         }
     }
 
@@ -100,6 +103,14 @@ impl Object {
 
     pub fn kind(&self) -> ObjectKind {
         self.kind
+    }
+
+    pub fn is_dirty(&self) -> bool {
+        self.dirty
+    }
+
+    pub fn set_dirty(&mut self, dirty: bool) {
+        self.dirty = dirty
     }
 
     pub fn fields(&self) -> impl Iterator<Item = (&ObjectId, &Field)> {
@@ -128,10 +139,14 @@ impl Object {
     }
 
     pub fn unset_simple_field(&mut self, id: ObjectId) {
+        self.dirty = true;
+
         self.fields.remove(&id);
     }
 
     pub fn unset_leveled_field(&mut self, id: ObjectId, level: u32) {
+        self.dirty = true;
+
         if let Some(field) = self.fields.get_mut(&id) {
             if let FieldKind::Leveled { values } = &mut field.kind {
                 values.retain(|dv| dv.level != level)
@@ -140,12 +155,16 @@ impl Object {
     }
 
     pub fn set_simple_field(&mut self, id: ObjectId, value: Value) {
+        self.dirty = true;
+
         let kind = FieldKind::Simple { value };
         let field = Field { id, kind };
         self.fields.insert(id, field);
     }
 
     pub fn set_leveled_field(&mut self, id: ObjectId, level: u32, value: Value) {
+        self.dirty = true;
+
         let field = self.fields.entry(id).or_insert_with(|| Field {
             id,
             kind: FieldKind::Leveled {
@@ -175,6 +194,8 @@ impl Object {
     /// in our use case. Just override the fields in this object
     /// from the fields in the other.
     pub fn add_from(&mut self, other: &Object) {
+        self.dirty = true;
+
         for (id, field) in &other.fields {
             self.fields.insert(*id, field.clone());
         }

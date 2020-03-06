@@ -34,7 +34,18 @@ impl LuaUserData for Viewer {
             Ok(wrap_result(ctx, result))
         });
 
-        methods.add_method_mut("files", |_, obj, _: ()| Ok(obj.archive.files()));
+        methods.add_method_mut("files", |_, obj, _: ()| {
+            if let Some(files) = obj.archive.files() {
+                return Ok(Some(
+                    files
+                        .iter()
+                        .map(|p| p.replace("\\", "/"))
+                        .collect::<Vec<_>>(),
+                ));
+            }
+
+            Ok(None)
+        });
 
         methods.add_method_mut("extractTo", |ctx, obj, path: LuaString| {
             let result = readflow_extract(&mut obj.archive, path);
@@ -133,26 +144,27 @@ fn readflow_extract(archive: &mut FileArchive, path: LuaString) -> Result<bool, 
     let files = archive
         .files()
         .ok_or_else(|| StringError::new("no listfile found"))?;
-    for file in files {
-        let contents = archive.read_file(&file);
+    for file_path in files {
+        let contents = archive.read_file(&file_path);
 
         if let Err(error) = contents {
-            eprintln!("mpq.extractTo(): could not read file {}: {}", file, error);
+            eprintln!("mpq.extractTo(): could not read file {}: {}", file_path, error);
             continue;
         }
 
-        let out_path = path.join(&file);
+        let file_path = file_path.replace("\\", "/");
+        let out_path = path.join(&file_path);
 
         if let Err(error) = fs::create_dir_all(out_path.parent().unwrap()) {
             eprintln!(
                 "mpq.extractTo(): could not create directory for file {}: {}",
-                file, error
+                file_path, error
             );
             continue;
         }
 
         if let Err(error) = fs::write(out_path, contents.unwrap()) {
-            eprintln!("mpq.extractTo(): could not write file {}: {}", file, error);
+            eprintln!("mpq.extractTo(): could not write file {}: {}", file_path, error);
             continue;
         }
     }

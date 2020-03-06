@@ -1,3 +1,8 @@
+# 0.3.6
+
+* Fixed an issue (for the umptienth time) related to incorrect handling of backwards slashes in Ceres.
+* Ceres no longer writes out object data files if there were no object data modifications. This means it doesn't create blank object data files anymore, and it also won't touch your existing object data if you do not modify it in Ceres.
+
 # 0.3.5
 
 * Fixed an issue with `map:addDir` and `dir` mapmode.

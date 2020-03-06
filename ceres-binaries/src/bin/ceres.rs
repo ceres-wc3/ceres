@@ -4,20 +4,18 @@ fn main() {
     dotenv::dotenv().ok();
 
     let matches = clap_app!(Ceres =>
-        (version: "0.3.5")
+        (version: "0.3.6")
         (author: "mori <mori@reu.moe>")
         (about: "Ceres is a build tool, script compiler and map preprocessor for WC3 Lua maps.")
         (@subcommand build =>
             (about: "Uses the build.lua file in the current directory to build a map.")
             (setting: clap::AppSettings::TrailingVarArg)
-            (@arg manifest: --manifest +takes_value)
             (@arg dir: --dir -d +takes_value "Sets the project directory.")
             (@arg BUILD_ARGS: ... "Arguments to pass to the build script.")
         )
         (@subcommand run =>
             (about: "Uses the build.lua file in the current directory to build and run a map.")
             (setting: clap::AppSettings::TrailingVarArg)
-            (@arg manifest: --manifest +takes_value)
             (@arg dir: --dir -d +takes_value "Sets the project directory.")
             (@arg BUILD_ARGS: ... "Arguments to pass to the build script.")
         )
@@ -57,10 +55,6 @@ fn run_build(arg: &clap::ArgMatches, mode: ceres_core::CeresRunMode) -> Result<(
         .values_of("BUILD_ARGS")
         .map(std::iter::Iterator::collect)
         .unwrap_or_else(Vec::new);
-
-    let manifest_port = arg
-        .value_of("manifest")
-        .map(|s| u16::from_str_radix(s, 10).unwrap());
 
     ceres_core::run_build_script(mode, project_dir, script_args)?;
 
