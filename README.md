@@ -1,3 +1,9 @@
+# **!!!Notice!!!**
+
+Ceres is discontinued indefinitely. This is mainly due to my unavailability, and the complete dumpster fire that Reforged turned out to be.
+
+If you wish to pick up the project, the license permits you to do so.
+
 # About
 
 Ceres is a stand-alone scriptable build toolchain for Warcraft III maps. It provides a way to quickly and easily build and package Warcraft III Lua maps, as well as various other utilities and tools.
@@ -8,8 +14,6 @@ It is scriptable and customizable using Lua, and can be used to orchestrate what
 - Editing your maps' Object Data using Lua
 - Managing imports
 - And so on
-
-There is also a community Discord where you can contact me for help, suggestions, or just to hang out. [Link.](https://discord.gg/M4KXP9a)
 
 ## Quick Start
 
